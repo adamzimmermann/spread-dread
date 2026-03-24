@@ -1,0 +1,153 @@
+{# Game card partial - receives: game, player1_name, player2_name #}
+<div class="bg-white rounded-lg shadow p-4 {{ game.isComplete ? 'border-l-4 border-green-500' : '' }}">
+    {# Header: region + round #}
+    <div class="flex items-center justify-between mb-2">
+        <span class="text-xs text-gray-400 uppercase tracking-wide">
+            {{ game.region ?? 'National' }} &middot; {{ game.roundName }}
+        </span>
+        {% if game.isComplete %}
+            <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Final</span>
+        {% endif %}
+    </div>
+
+    {# Teams #}
+    <div class="space-y-2 mb-3">
+        {# Team 1 #}
+        <div class="flex items-center justify-between {{ game.winner and game.winner == game.team1 ? 'font-bold' : '' }}">
+            <div class="flex items-center gap-2 flex-1 min-w-0">
+                {% if game.team1 %}
+                    <span class="text-xs text-gray-400 w-5 text-right shrink-0">{{ game.team1.seed }}</span>
+                    <span class="truncate">{{ game.team1.name }}</span>
+                {% else %}
+                    <span class="text-gray-300 italic">TBD</span>
+                {% endif %}
+            </div>
+            {% if game.team1Score is not null %}
+                <span class="text-lg font-mono ml-2">{{ game.team1Score }}</span>
+            {% endif %}
+        </div>
+
+        {# Team 2 #}
+        <div class="flex items-center justify-between {{ game.winner and game.winner == game.team2 ? 'font-bold' : '' }}">
+            <div class="flex items-center gap-2 flex-1 min-w-0">
+                {% if game.team2 %}
+                    <span class="text-xs text-gray-400 w-5 text-right shrink-0">{{ game.team2.seed }}</span>
+                    <span class="truncate">{{ game.team2.name }}</span>
+                {% else %}
+                    <span class="text-gray-300 italic">TBD</span>
+                {% endif %}
+            </div>
+            {% if game.team2Score is not null %}
+                <span class="text-lg font-mono ml-2">{{ game.team2Score }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    {# Spread + ATS result #}
+    {% if game.spread is not null and game.spreadTeam is not null %}
+        <div class="text-xs text-gray-500 mb-2">
+            Spread: {{ game.spreadTeam.name }} -{{ game.spread }}
+            {% if game.isComplete %}
+                {% set margin = game.team1Score - game.team2Score %}
+                {% if game.spreadTeam == game.team1 %}
+                    {% set coveredMargin = margin - game.spread %}
+                {% else %}
+                    {% set coveredMargin = (margin * -1) - game.spread %}
+                {% endif %}
+                {% if coveredMargin > 0 %}
+                    <span class="text-green-600 font-medium">&middot; {{ game.spreadTeam.name }} covered</span>
+                {% elseif coveredMargin < 0 %}
+                    {% set underdogTeam = game.spreadTeam == game.team1 ? game.team2 : game.team1 %}
+                    <span class="text-green-600 font-medium">&middot; {{ underdogTeam.name }} covered</span>
+                {% else %}
+                    <span class="text-yellow-600 font-medium">&middot; Push</span>
+                {% endif %}
+            {% endif %}
+        </div>
+    {% elseif game.team1 and game.team2 %}
+        <div class="mb-2">
+            <details class="text-xs" {{ game.isComplete ? 'open' : '' }}>
+                <summary class="text-gray-400 cursor-pointer hover:text-gray-600">{{ game.isComplete ? 'Set spread (needed to evaluate picks)' : 'Set spread manually' }}</summary>
+                <div class="mt-1 flex gap-1 items-center">
+                    <select class="border border-gray-200 rounded px-1 py-0.5 text-xs" id="spread-team-{{ game.id }}">
+                        <option value="{{ game.team1.id }}">{{ game.team1.name }}</option>
+                        <option value="{{ game.team2.id }}">{{ game.team2.name }}</option>
+                    </select>
+                    <span class="text-gray-400">-</span>
+                    <input type="number" step="0.5" placeholder="5.5"
+                           class="border border-gray-200 rounded px-1 py-0.5 text-xs w-14"
+                           id="spread-val-{{ game.id }}">
+                    <button onclick="setSpread({{ game.id }})"
+                            class="bg-gray-200 text-gray-600 px-2 py-0.5 rounded text-xs hover:bg-gray-300">Set</button>
+                </div>
+            </details>
+        </div>
+    {% endif %}
+
+    {# Manual score entry #}
+    {% if game.team1 and game.team2 and not game.isComplete %}
+        <div class="mb-2">
+            <details class="text-xs">
+                <summary class="text-gray-400 cursor-pointer hover:text-gray-600">Enter scores manually</summary>
+                <div class="mt-1 flex gap-1 items-center">
+                    <input type="number" placeholder="{{ game.team1.name }}"
+                           class="border border-gray-200 rounded px-1 py-0.5 text-xs w-16"
+                           id="score-t1-{{ game.id }}">
+                    <span class="text-gray-400">-</span>
+                    <input type="number" placeholder="{{ game.team2.name }}"
+                           class="border border-gray-200 rounded px-1 py-0.5 text-xs w-16"
+                           id="score-t2-{{ game.id }}">
+                    <button onclick="setScore({{ game.id }})"
+                            class="bg-gray-200 text-gray-600 px-2 py-0.5 rounded text-xs hover:bg-gray-300">Save</button>
+                </div>
+            </details>
+        </div>
+    {% endif %}
+
+    {# Picks — tap a team for Player 1, Player 2 auto-gets the other #}
+    {% if game.team1 and game.team2 %}
+        {% set p1pick = game.getPickForPlayer(1) %}
+        {% set p2pick = game.getPickForPlayer(2) %}
+        <div class="border-t border-gray-100 pt-2">
+            <div class="text-xs text-gray-400 mb-1">{{ player1_name }} picks ({{ player2_name }} gets the other):</div>
+            <div class="flex gap-1">
+                <button onclick="assignPick({{ game.id }}, 1, {{ game.team1.id }})"
+                        class="flex-1 text-xs px-2 py-1.5 rounded border transition-colors
+                               {{ p1pick and p1pick.team == game.team1
+                                  ? (p1pick.isWinner is same as(true) ? 'bg-green-600 text-white border-green-600'
+                                     : (p1pick.isWinner is same as(false) ? 'bg-red-100 text-red-700 border-red-300'
+                                        : 'bg-blue-600 text-white border-blue-600'))
+                                  : 'border-gray-200 text-gray-600 hover:border-blue-400' }}">
+                    {{ game.team1.name }}
+                    {% if p1pick and p1pick.team == game.team1 %}
+                        <span class="opacity-75">({{ player1_name }})</span>
+                    {% elseif p2pick and p2pick.team == game.team1 %}
+                        <span class="opacity-75">({{ player2_name }})</span>
+                    {% endif %}
+                </button>
+                <button onclick="assignPick({{ game.id }}, 1, {{ game.team2.id }})"
+                        class="flex-1 text-xs px-2 py-1.5 rounded border transition-colors
+                               {{ p1pick and p1pick.team == game.team2
+                                  ? (p1pick.isWinner is same as(true) ? 'bg-green-600 text-white border-green-600'
+                                     : (p1pick.isWinner is same as(false) ? 'bg-red-100 text-red-700 border-red-300'
+                                        : 'bg-blue-600 text-white border-blue-600'))
+                                  : 'border-gray-200 text-gray-600 hover:border-blue-400' }}">
+                    {{ game.team2.name }}
+                    {% if p1pick and p1pick.team == game.team2 %}
+                        <span class="opacity-75">({{ player1_name }})</span>
+                    {% elseif p2pick and p2pick.team == game.team2 %}
+                        <span class="opacity-75">({{ player2_name }})</span>
+                    {% endif %}
+                </button>
+            </div>
+        </div>
+    {% endif %}
+
+    {# Next game context #}
+    {% if game.nextGame %}
+        <div class="text-xs text-gray-400 mt-2">
+            Winner plays in {{ game.nextGame.roundName }}
+            {% if game.nextGame.region %} ({{ game.nextGame.region }}){% endif %}
+        </div>
+    {% endif %}
+</div>

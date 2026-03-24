@@ -1,0 +1,22 @@
+###> symfony/framework-bundle ###
+/.env
+/.env.dev
+/.env.local
+/.env.local.php
+/.env.*.local
+/config/secrets/prod/prod.decrypt.private.php
+/public/bundles/
+/var/
+/vendor/
+###< symfony/framework-bundle ###
+
+# IDE
+/.idea/
+
+# DDEV local overrides
+/.ddev/.ddev-docker-compose-*
+/.ddev/db_snapshots/
+/.ddev/.homeadditions/
+
+# Claude Code
+/.claude/

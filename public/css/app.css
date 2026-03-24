@@ -1,0 +1,22 @@
+/* Custom styles for March Madness bracket app */
+
+/* Smooth scrolling for round tabs */
+#round-tabs {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+#round-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+/* Loading state for buttons */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Transition for card updates */
+.game-card-updating {
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}

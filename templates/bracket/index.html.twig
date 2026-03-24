@@ -1,0 +1,27 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Brackets - March Madness{% endblock %}
+
+{% block body %}
+<div class="flex items-center justify-between mb-4">
+    <h1 class="text-xl font-bold text-gray-800">Your Brackets</h1>
+    <a href="{{ path('app_bracket_create') }}"
+       class="bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-800">
+        + New Bracket
+    </a>
+</div>
+
+{% if brackets is empty %}
+    <p class="text-gray-500 text-center py-8">No brackets yet. Create one to get started!</p>
+{% else %}
+    <div class="space-y-3">
+        {% for bracket in brackets %}
+            <a href="{{ path('app_bracket_show', {id: bracket.id}) }}"
+               class="block bg-white rounded-lg shadow px-4 py-3 hover:shadow-md transition-shadow">
+                <div class="font-medium text-gray-800">{{ bracket.name }}</div>
+                <div class="text-sm text-gray-500">{{ bracket.year }} &middot; Created {{ bracket.createdAt|date('M j, Y') }}</div>
+            </a>
+        {% endfor %}
+    </div>
+{% endif %}
+{% endblock %}

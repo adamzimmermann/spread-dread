@@ -1,0 +1,41 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Create Bracket - March Madness{% endblock %}
+
+{% block body %}
+<h1 class="text-xl font-bold text-gray-800 mb-4">Create Bracket</h1>
+
+<form method="post" class="space-y-4">
+    <div>
+        <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Bracket Name</label>
+        <input type="text" name="name" id="name" required placeholder="e.g. Adam vs Mike 2026"
+               class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+    </div>
+
+    <div>
+        <label for="year" class="block text-sm font-medium text-gray-700 mb-1">Tournament Year</label>
+        <input type="number" name="year" id="year" value="{{ 'now'|date('Y') }}" min="2020" max="2030"
+               class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+        <div>
+            <label for="player1_name" class="block text-sm font-medium text-gray-700 mb-1">Player 1 Name</label>
+            <input type="text" name="player1_name" id="player1_name" placeholder="e.g. Adam"
+                   class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+        <div>
+            <label for="player2_name" class="block text-sm font-medium text-gray-700 mb-1">Player 2 Name</label>
+            <input type="text" name="player2_name" id="player2_name" placeholder="e.g. Mike"
+                   class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+    </div>
+
+    <button type="submit"
+            class="w-full bg-blue-700 text-white py-2 rounded font-medium hover:bg-blue-800">
+        Create Bracket
+    </button>
+</form>
+
+<a href="{{ path('app_bracket_index') }}" class="block text-center text-sm text-blue-600 mt-4 hover:underline">Cancel</a>
+{% endblock %}

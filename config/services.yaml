@@ -1,0 +1,17 @@
+parameters:
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/Entity/'
+            - '../src/Kernel.php'
+
+    App\Service\OddsApiService:
+        arguments:
+            $oddsApiKey: '%env(ODDS_API_KEY)%'

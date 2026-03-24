@@ -30,3 +30,8 @@
 
 # OSX files
 .DS_store
+
+###> phpunit/phpunit ###
+/phpunit.xml
+/.phpunit.cache/
+###< phpunit/phpunit ###

@@ -32,6 +32,13 @@ ddev exec php bin/console tailwind:build --watch   # Development watch mode
 
 The built CSS (`var/tailwind/app.built.css`) is committed to the repo so the production server doesn't need to run the Tailwind binary. Always run `tailwind:build` locally before committing template changes.
 
+Run tests:
+```bash
+ddev composer test
+```
+
+Tests use PHPUnit with `dama/doctrine-test-bundle` for transaction isolation (each test rolls back automatically). The test suite shares the dev database but all changes are rolled back. Always run tests before pushing code.
+
 Clear cache:
 ```bash
 ddev exec php bin/console cache:clear

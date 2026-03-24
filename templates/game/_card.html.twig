@@ -1,7 +1,15 @@
-{# Game card partial - receives: game, player1_name, player2_name, current_player, warning (optional) #}
+{# Game card partial - receives: game, player1_name, player2_name, current_player, picker (optional), warning (optional) #}
 {% set _current_player = current_player is defined ? current_player : null %}
 {% set _opponent_name = _current_player == 1 ? player2_name : (_current_player == 2 ? player1_name : null) %}
-<div class="bg-white rounded-lg shadow p-4 {{ game.isComplete ? 'border-l-4 border-green-500' : '' }} {{ warning is defined and warning ? 'border-l-4 border-yellow-400' : '' }}">
+{% set _picker = picker is defined ? picker : null %}
+{% set _isMyPick = _picker is not null and _picker == _current_player %}
+{% set _borderClass = '' %}
+{% if warning is defined and warning %}
+    {% set _borderClass = 'border-l-4 border-yellow-400' %}
+{% elseif _picker is not null %}
+    {% set _borderClass = _isMyPick ? 'border-l-4 border-blue-500' : 'border-l-4 border-red-400' %}
+{% endif %}
+<div class="bg-white rounded-lg shadow p-4 {{ _borderClass }}">
     {# Warning banner #}
     {% set _warning = warning is defined and warning ? warning : null %}
     {% if not _warning and game.team1 and game.team2 and not game.externalGameId %}
@@ -106,41 +114,74 @@
         {% set opponentPlayer = _current_player == 1 ? 2 : 1 %}
         {% set opponentPick = game.getPickForPlayer(opponentPlayer) %}
         <div class="border-t border-gray-100 pt-2">
-            <div class="text-xs text-gray-400 mb-1">Your pick ({{ _opponent_name }} gets the other):</div>
-            <div class="flex gap-1">
-                <button onclick="assignPick({{ game.id }}, {{ game.team1.id }})"
-                        class="flex-1 text-xs px-2 py-1.5 rounded border transition-colors
-                               {{ game.isComplete ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer' }}
-                               {{ myPick and myPick.team == game.team1
-                                  ? (myPick.isWinner is same as(true) ? 'bg-green-600 text-white border-green-600'
-                                     : (myPick.isWinner is same as(false) ? 'bg-red-100 text-red-700 border-red-300'
-                                        : 'bg-blue-600 text-white border-blue-600'))
-                                  : 'border-gray-200 text-gray-600 hover:border-blue-400' }}"
-                        {{ game.isComplete ? 'disabled' : '' }}>
-                    {{ game.team1.name }}
-                    {% if myPick and myPick.team == game.team1 %}
-                        <span class="opacity-75">(You)</span>
-                    {% elseif opponentPick and opponentPick.team == game.team1 %}
-                        <span class="opacity-75">({{ _opponent_name }})</span>
-                    {% endif %}
-                </button>
-                <button onclick="assignPick({{ game.id }}, {{ game.team2.id }})"
-                        class="flex-1 text-xs px-2 py-1.5 rounded border transition-colors
-                               {{ game.isComplete ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer' }}
-                               {{ myPick and myPick.team == game.team2
-                                  ? (myPick.isWinner is same as(true) ? 'bg-green-600 text-white border-green-600'
-                                     : (myPick.isWinner is same as(false) ? 'bg-red-100 text-red-700 border-red-300'
-                                        : 'bg-blue-600 text-white border-blue-600'))
-                                  : 'border-gray-200 text-gray-600 hover:border-blue-400' }}"
-                        {{ game.isComplete ? 'disabled' : '' }}>
-                    {{ game.team2.name }}
-                    {% if myPick and myPick.team == game.team2 %}
-                        <span class="opacity-75">(You)</span>
-                    {% elseif opponentPick and opponentPick.team == game.team2 %}
-                        <span class="opacity-75">({{ _opponent_name }})</span>
-                    {% endif %}
-                </button>
-            </div>
+            {% if _isMyPick or _picker is null %}
+                {# My pick — show interactive buttons #}
+                <div class="text-xs text-gray-400 mb-1">
+                    {% if _isMyPick %}<span class="text-blue-600 font-medium">Your pick</span> ({{ _opponent_name }} gets the other):{% else %}Your pick ({{ _opponent_name }} gets the other):{% endif %}
+                </div>
+                <div class="flex gap-1">
+                    <button onclick="assignPick({{ game.id }}, {{ game.team1.id }})"
+                            class="flex-1 text-xs px-2 py-1.5 rounded border transition-colors
+                                   {{ game.isComplete and myPick ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer' }}
+                                   {{ myPick and myPick.team == game.team1
+                                      ? (myPick.isWinner is same as(true) ? 'bg-green-600 text-white border-green-600'
+                                         : (myPick.isWinner is same as(false) ? 'bg-red-100 text-red-700 border-red-300'
+                                            : 'bg-blue-600 text-white border-blue-600'))
+                                      : 'border-gray-200 text-gray-600 hover:border-blue-400' }}"
+                            {{ game.isComplete and myPick ? 'disabled' : '' }}>
+                        {{ game.team1.name }}
+                        {% if myPick and myPick.team == game.team1 %}
+                            <span class="opacity-75">(You)</span>
+                        {% elseif opponentPick and opponentPick.team == game.team1 %}
+                            <span class="opacity-75">({{ _opponent_name }})</span>
+                        {% endif %}
+                    </button>
+                    <button onclick="assignPick({{ game.id }}, {{ game.team2.id }})"
+                            class="flex-1 text-xs px-2 py-1.5 rounded border transition-colors
+                                   {{ game.isComplete and myPick ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer' }}
+                                   {{ myPick and myPick.team == game.team2
+                                      ? (myPick.isWinner is same as(true) ? 'bg-green-600 text-white border-green-600'
+                                         : (myPick.isWinner is same as(false) ? 'bg-red-100 text-red-700 border-red-300'
+                                            : 'bg-blue-600 text-white border-blue-600'))
+                                      : 'border-gray-200 text-gray-600 hover:border-blue-400' }}"
+                            {{ game.isComplete and myPick ? 'disabled' : '' }}>
+                        {{ game.team2.name }}
+                        {% if myPick and myPick.team == game.team2 %}
+                            <span class="opacity-75">(You)</span>
+                        {% elseif opponentPick and opponentPick.team == game.team2 %}
+                            <span class="opacity-75">({{ _opponent_name }})</span>
+                        {% endif %}
+                    </button>
+                </div>
+            {% elseif opponentPick %}
+                {# Opponent's pick, already made — show assignments read-only #}
+                <div class="text-xs text-gray-400 mb-1"><span class="text-red-500 font-medium">{{ _opponent_name }}'s pick</span></div>
+                <div class="flex gap-1">
+                    <div class="flex-1 text-xs px-2 py-1.5 rounded border
+                                {{ opponentPick.team == game.team1 ? 'bg-red-50 border-red-200 text-red-700' : 'border-gray-200 text-gray-600' }}">
+                        {{ game.team1.name }}
+                        {% if myPick and myPick.team == game.team1 %}
+                            <span class="opacity-75">(You)</span>
+                        {% elseif opponentPick and opponentPick.team == game.team1 %}
+                            <span class="opacity-75">({{ _opponent_name }})</span>
+                        {% endif %}
+                    </div>
+                    <div class="flex-1 text-xs px-2 py-1.5 rounded border
+                                {{ opponentPick.team == game.team2 ? 'bg-red-50 border-red-200 text-red-700' : 'border-gray-200 text-gray-600' }}">
+                        {{ game.team2.name }}
+                        {% if myPick and myPick.team == game.team2 %}
+                            <span class="opacity-75">(You)</span>
+                        {% elseif opponentPick and opponentPick.team == game.team2 %}
+                            <span class="opacity-75">({{ _opponent_name }})</span>
+                        {% endif %}
+                    </div>
+                </div>
+            {% else %}
+                {# Opponent's pick, not yet made #}
+                <div class="text-xs text-gray-400 py-1.5">
+                    <span class="text-red-500">Waiting for {{ _opponent_name }}...</span>
+                </div>
+            {% endif %}
         </div>
     {% endif %}
 

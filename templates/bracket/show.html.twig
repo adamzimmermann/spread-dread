@@ -13,22 +13,22 @@
 </div>
 
 {# Sticky score card #}
-<div class="sticky top-0 z-10 bg-blue-700 text-white rounded-lg px-4 py-3 mb-4 shadow-lg" id="score-card">
+<div class="sticky top-0 z-10 bg-white border border-gray-200 rounded-lg px-4 py-3 mb-4 shadow-lg" id="score-card">
     <div class="flex items-center justify-between">
         <div class="text-center flex-1">
-            <div class="text-xs uppercase tracking-wide opacity-80 flex items-center justify-center gap-1">
-                <span class="w-2 h-2 rounded-full {{ current_player == 1 ? 'bg-blue-300' : 'bg-red-400' }} inline-block"></span>
+            <div class="text-xs uppercase tracking-wide text-gray-500 flex items-center justify-center gap-1">
+                <span class="w-2 h-2 rounded-full {{ current_player == 1 ? 'bg-blue-500' : 'bg-red-400' }} inline-block"></span>
                 {{ scores.player1_name }}
             </div>
-            <div class="text-2xl font-bold" id="score-p1">{{ scores.player1 }}</div>
+            <div class="text-2xl font-bold text-gray-900" id="score-p1">{{ scores.player1 }}</div>
         </div>
-        <div class="text-lg font-light opacity-60 px-2">vs</div>
+        <div class="text-lg font-light text-gray-300 px-2">vs</div>
         <div class="text-center flex-1">
-            <div class="text-xs uppercase tracking-wide opacity-80 flex items-center justify-center gap-1">
-                <span class="w-2 h-2 rounded-full {{ current_player == 2 ? 'bg-blue-300' : 'bg-red-400' }} inline-block"></span>
+            <div class="text-xs uppercase tracking-wide text-gray-500 flex items-center justify-center gap-1">
+                <span class="w-2 h-2 rounded-full {{ current_player == 2 ? 'bg-blue-500' : 'bg-red-400' }} inline-block"></span>
                 {{ scores.player2_name }}
             </div>
-            <div class="text-2xl font-bold" id="score-p2">{{ scores.player2 }}</div>
+            <div class="text-2xl font-bold text-gray-900" id="score-p2">{{ scores.player2 }}</div>
         </div>
     </div>
 </div>

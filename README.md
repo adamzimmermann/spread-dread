@@ -31,13 +31,11 @@ ddev launch
 
 `composer install` automatically builds the Tailwind CSS via an auto-script.
 
-### Create Users
+### Create or Update Users
 
 ```bash
-ddev exec php bin/console app:seed-users
+ddev exec php bin/console app:user <username> <password>
 ```
-
-Or create users manually through the application.
 
 ## Development
 

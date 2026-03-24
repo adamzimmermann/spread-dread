@@ -1,6 +1,6 @@
 import './styles/app.css';
 
-// March Madness Bracket - AJAX interactions
+// Spread Dread Bracket - AJAX interactions
 
 // --- Region tabs ---
 

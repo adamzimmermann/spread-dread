@@ -1,4 +1,4 @@
-# March Madness Bracket Challenge
+# Spread Dread
 
 A head-to-head NCAA Tournament bracket app where two players compete using point spreads. One player picks a team per game; the other automatically gets the opponent. Picks are evaluated against the spread, not outright winners.
 

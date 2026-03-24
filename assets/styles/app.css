@@ -2,7 +2,7 @@
 @source "../../templates";
 @source "../";
 
-/* Custom styles for March Madness bracket app */
+/* Custom styles for Spread Dread bracket app */
 
 /* All buttons and submit inputs should use pointer cursor */
 button, input[type="submit"] {

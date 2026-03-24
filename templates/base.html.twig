@@ -11,7 +11,7 @@
 </head>
 <body class="bg-gray-100 min-h-screen">
     <nav class="bg-blue-800 text-white px-4 py-3 flex items-center justify-between">
-        <a href="{{ path('app_bracket_index') }}" class="text-lg font-bold">Spread Dread</a>
+        <a href="{{ path('app_home') }}" class="text-lg font-bold">Spread Dread</a>
         {% if app.session.get('user_id') %}
             <span class="text-sm text-blue-200 mr-3">{{ app.session.get('username') }}</span>
             <a href="{{ path('app_logout') }}" class="text-sm text-blue-200 hover:text-white">Logout</a>
@@ -26,7 +26,7 @@
         {% endfor %}
     {% endfor %}
 
-    <main class="max-w-2xl mx-auto px-4 py-4">
+    <main class="{% block main_class %}max-w-2xl mx-auto px-4 py-4{% endblock %}">
         {% block body %}{% endblock %}
     </main>
 

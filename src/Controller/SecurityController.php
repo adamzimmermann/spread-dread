@@ -16,7 +16,7 @@ class SecurityController extends AbstractController
         if ($request->getSession()->get('user_id')) {
             return $this->redirectToRoute('app_bracket_index');
         }
-        return $this->redirectToRoute('app_login');
+        return $this->render('security/landing.html.twig');
     }
 
     #[Route('/login', name: 'app_login', methods: ['GET', 'POST'])]

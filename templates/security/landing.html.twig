@@ -1,0 +1,208 @@
+{% extends 'base.html.twig' %}
+
+{% block main_class %}max-w-3xl mx-auto px-4 py-4{% endblock %}
+
+{% block body %}
+{# Hero #}
+<div class="text-center py-8">
+    <h1 class="text-3xl font-bold text-gray-900 mb-2">Spread Dread</h1>
+    <p class="text-lg text-gray-600 mb-4">Head-to-head March Madness brackets &mdash; against the spread.</p>
+    <p class="text-sm text-gray-500 max-w-lg mx-auto mb-6">
+        Pick your side of every NCAA Tournament game. Your opponent automatically gets the other team.
+        Forget outright winners &mdash; every game is competitive as it's all about beating the spread.
+    </p>
+    <a href="{{ path('app_login') }}"
+       class="inline-block bg-blue-700 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-800 transition-colors">
+        Log In
+    </a>
+</div>
+
+{# How It Works #}
+<div class="py-6">
+    <h2 class="text-lg font-bold text-gray-800 text-center mb-4">How It Works</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div class="bg-white rounded-lg shadow p-4 text-center">
+            <div class="text-2xl font-bold text-blue-700 mb-2">1</div>
+            <h3 class="font-medium text-gray-800 mb-1">Set up a bracket</h3>
+            <p class="text-sm text-gray-500">Create a 63-game tournament bracket for two players with the click of a button.</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 text-center">
+            <div class="text-2xl font-bold text-blue-700 mb-2">2</div>
+            <h3 class="font-medium text-gray-800 mb-1">Make your picks</h3>
+            <p class="text-sm text-gray-500">Alternate choosing a team for each game. Your opponent gets the other side.</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 text-center">
+            <div class="text-2xl font-bold text-blue-700 mb-2">3</div>
+            <h3 class="font-medium text-gray-800 mb-1">Beat the spread</h3>
+            <p class="text-sm text-gray-500">Win points when your team covers the point spread, not just outright wins.</p>
+        </div>
+    </div>
+</div>
+
+{# Mock UI Preview #}
+<div class="py-6">
+    <h2 class="text-lg font-bold text-gray-800 text-center mb-4">See It in Action</h2>
+
+    {# Mock round tabs #}
+    <div class="max-w-xl mx-auto flex gap-2 overflow-x-auto pb-2 mb-3">
+        <span class="whitespace-nowrap px-2.5 py-1 rounded-full text-xs font-medium bg-blue-700 text-white">Round of 64</span>
+        <span class="whitespace-nowrap px-2.5 py-1 rounded-full text-xs font-medium bg-white text-gray-600">Round of 32</span>
+        <span class="whitespace-nowrap px-2.5 py-1 rounded-full text-xs font-medium bg-white text-gray-600">Sweet 16</span>
+        <span class="whitespace-nowrap px-2.5 py-1 rounded-full text-xs font-medium bg-white text-gray-600">Elite 8</span>
+        <span class="whitespace-nowrap px-2.5 py-1 rounded-full text-xs font-medium bg-white text-gray-600">Final Four</span>
+        <span class="whitespace-nowrap px-2.5 py-1 rounded-full text-xs font-medium bg-white text-gray-600">Championship</span>
+    </div>
+
+    {# Mock score card #}
+    <div class="max-w-xl mx-auto mb-4">
+        <div class="bg-white border border-gray-200 rounded-lg px-4 py-3 shadow-lg">
+            <div class="flex items-center justify-between">
+                <div class="text-center flex-1">
+                    <div class="text-xs uppercase tracking-wide text-gray-500 flex items-center justify-center gap-1">
+                        <span class="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
+                        Adam
+                    </div>
+                    <div class="text-2xl font-bold text-gray-900">18</div>
+                </div>
+                <div class="text-lg font-light text-gray-300 px-2">vs</div>
+                <div class="text-center flex-1">
+                    <div class="text-xs uppercase tracking-wide text-gray-500 flex items-center justify-center gap-1">
+                        <span class="w-2 h-2 rounded-full bg-red-400 inline-block"></span>
+                        Dave
+                    </div>
+                    <div class="text-2xl font-bold text-gray-900">15</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Mock pick progress #}
+    <div class="max-w-xl mx-auto flex gap-2 mb-4">
+        <div class="flex-1 bg-white rounded-lg border border-gray-200 p-2.5">
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-medium text-blue-700">My picks</span>
+                <span class="text-xs text-gray-500">14/16</span>
+            </div>
+            <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div class="h-full rounded-full bg-blue-500" style="width: 87.5%"></div>
+            </div>
+        </div>
+        <div class="flex-1 bg-white rounded-lg border border-gray-200 p-2.5">
+            <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-medium text-red-600">Dave's picks</span>
+                <span class="text-xs text-gray-500">16/16</span>
+            </div>
+            <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div class="h-full rounded-full bg-green-500" style="width: 100%"></div>
+            </div>
+        </div>
+    </div>
+
+    {# Mock game cards #}
+    <div class="max-w-xl mx-auto space-y-3">
+        {# Completed game - your pick won #}
+        <div class="bg-white rounded-lg shadow p-4 border-l-4 border-blue-500">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs text-gray-400 uppercase tracking-wide">East &middot; Round of 64</span>
+                <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">Final</span>
+            </div>
+            <div class="space-y-2 mb-3">
+                <div class="flex items-center justify-between font-bold">
+                    <div class="flex items-center gap-2 flex-1 min-w-0">
+                        <span class="text-xs text-gray-400 w-5 text-right shrink-0">1</span>
+                        <span class="truncate">Duke</span>
+                    </div>
+                    <span class="text-lg font-mono ml-2">82</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2 flex-1 min-w-0">
+                        <span class="text-xs text-gray-400 w-5 text-right shrink-0">16</span>
+                        <span class="truncate">Norfolk St</span>
+                    </div>
+                    <span class="text-lg font-mono ml-2">65</span>
+                </div>
+            </div>
+            <div class="text-xs text-gray-500 mb-2">
+                Spread: Duke -18.5
+                <span class="text-green-600 font-medium">&middot; Norfolk St covered</span>
+            </div>
+            <div class="border-t border-gray-100 pt-2">
+                <div class="text-xs text-gray-400 mb-1"><span class="text-blue-600 font-medium">Your pick</span> (Dave gets the other):</div>
+                <div class="flex gap-1">
+                    <div class="flex-1 text-xs px-2 py-1.5 rounded border border-gray-200 text-gray-600">
+                        Duke <span class="opacity-75">(Dave)</span>
+                    </div>
+                    <div class="flex-1 text-xs px-2 py-1.5 rounded border bg-green-600 text-white border-green-600">
+                        Norfolk St <span class="opacity-75">(You)</span>
+                    </div>
+                </div>
+            </div>
+            <div class="text-xs text-gray-400 mt-2">Winner plays in Round of 32 (East)</div>
+        </div>
+
+        {# Game awaiting picks #}
+        <div class="bg-white rounded-lg shadow p-4">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs text-gray-400 uppercase tracking-wide">West &middot; Round of 64</span>
+            </div>
+            <div class="space-y-2 mb-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2 flex-1 min-w-0">
+                        <span class="text-xs text-gray-400 w-5 text-right shrink-0">5</span>
+                        <span class="truncate">Michigan</span>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2 flex-1 min-w-0">
+                        <span class="text-xs text-gray-400 w-5 text-right shrink-0">12</span>
+                        <span class="truncate">VCU</span>
+                    </div>
+                </div>
+            </div>
+            <div class="text-xs text-gray-500 mb-2">
+                Spread: Michigan -4.5
+            </div>
+            <div class="border-t border-gray-100 pt-2">
+                <div class="text-xs text-gray-400 mb-1">Your pick (Dave gets the other):</div>
+                <div class="flex gap-1">
+                    <div class="flex-1 text-xs px-2 py-1.5 rounded border border-gray-200 text-gray-600 hover:border-blue-400 cursor-pointer transition-colors">Michigan</div>
+                    <div class="flex-1 text-xs px-2 py-1.5 rounded border border-gray-200 text-gray-600 hover:border-blue-400 cursor-pointer transition-colors">VCU</div>
+                </div>
+            </div>
+            <div class="text-xs text-gray-400 mt-2">Winner plays in Round of 32 (West)</div>
+        </div>
+    </div>
+</div>
+
+{# Feature highlights #}
+<div class="py-6">
+    <h2 class="text-lg font-bold text-gray-800 text-center mb-4">Features</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto">
+        <div class="bg-white rounded-lg shadow p-4">
+            <h3 class="font-medium text-gray-800 mb-1 text-sm">Auto-opponent picks</h3>
+            <p class="text-xs text-gray-500">Pick one team and your opponent automatically gets the other. Every game is contested.</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4">
+            <h3 class="font-medium text-gray-800 mb-1 text-sm">Simple Setup</h3>
+            <p class="text-xs text-gray-500">Pull spreads and scores automatically. No manual data entry needed.</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4">
+            <h3 class="font-medium text-gray-800 mb-1 text-sm">Round-by-round tracking</h3>
+            <p class="text-xs text-gray-500">Progress bars and score-cards keep you updated through all six rounds.</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4">
+            <h3 class="font-medium text-gray-800 mb-1 text-sm">Mobile-friendly</h3>
+            <p class="text-xs text-gray-500">Built for phones first. Make picks and check the score from anywhere during the tournament.</p>
+        </div>
+    </div>
+</div>
+
+{# Footer CTA #}
+<div class="text-center py-8 border-t border-gray-200">
+    <h2 class="text-lg font-bold text-gray-800 mb-2">Ready to play?</h2>
+    <a href="{{ path('app_login') }}"
+       class="inline-block bg-blue-700 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-800 transition-colors">
+        Log In
+    </a>
+</div>
+{% endblock %}

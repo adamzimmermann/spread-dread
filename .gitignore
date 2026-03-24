@@ -27,3 +27,6 @@
 /public/assets/
 /assets/vendor/
 ###< symfony/asset-mapper ###
+
+# OSX files
+.DS_store

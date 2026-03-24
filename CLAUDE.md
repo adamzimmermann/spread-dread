@@ -30,7 +30,7 @@ ddev exec php bin/console tailwind:build
 ddev exec php bin/console tailwind:build --watch   # Development watch mode
 ```
 
-Tailwind CSS also builds automatically via the `tailwind:build` auto-script in `composer.json`, so `ddev composer install` and `ddev composer update` always produce up-to-date CSS.
+The built CSS (`var/tailwind/app.built.css`) is committed to the repo so the production server doesn't need to run the Tailwind binary. Always run `tailwind:build` locally before committing template changes.
 
 Clear cache:
 ```bash

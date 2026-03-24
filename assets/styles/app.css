@@ -4,6 +4,11 @@
 
 /* Custom styles for March Madness bracket app */
 
+/* All buttons and submit inputs should use pointer cursor */
+button, input[type="submit"] {
+    cursor: pointer;
+}
+
 /* Smooth scrolling for round tabs */
 #round-tabs {
     scrollbar-width: none;

@@ -5,7 +5,7 @@
     {# Warning banner #}
     {% set _warning = warning is defined and warning ? warning : null %}
     {% if not _warning and game.team1 and game.team2 and not game.externalGameId %}
-        {% set _warning = 'No API match — spread and scores must be entered manually' %}
+        {% set _warning = 'Spread and score data not yet available — enter manually or try pulling later' %}
     {% endif %}
     {% if _warning %}
         <div class="flex items-center gap-1.5 bg-yellow-50 text-yellow-700 text-xs px-2.5 py-1.5 rounded mb-2 -mt-1">

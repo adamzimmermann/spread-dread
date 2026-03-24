@@ -53,13 +53,14 @@ class ScoringService
             // If you pick the underdog, they need to lose by less than 5.5 (or win)
             $pickedTeamScore = ($pickedTeam === $game->getTeam1()) ? $team1Score : $team2Score;
             $otherTeamScore = ($pickedTeam === $game->getTeam1()) ? $team2Score : $team1Score;
+            $absSpread = abs($spread);
 
             if ($pickedTeam === $spreadTeam) {
                 // Picked the favorite: they must win by more than the spread
-                $adjustedMargin = $pickedTeamScore - $otherTeamScore - $spread;
+                $adjustedMargin = $pickedTeamScore - $otherTeamScore - $absSpread;
             } else {
                 // Picked the underdog: they get the spread added
-                $adjustedMargin = $pickedTeamScore + $spread - $otherTeamScore;
+                $adjustedMargin = $pickedTeamScore + $absSpread - $otherTeamScore;
             }
 
             if ($adjustedMargin > 0) {

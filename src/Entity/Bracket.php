@@ -24,11 +24,13 @@ class Bracket
     #[ORM\Column]
     private \DateTimeImmutable $createdAt;
 
-    #[ORM\Column(length: 100)]
-    private string $player1Name = 'Player 1';
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?User $player1 = null;
 
-    #[ORM\Column(length: 100)]
-    private string $player2Name = 'Player 2';
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?User $player2 = null;
 
     /** @var Collection<int, Game> */
     #[ORM\OneToMany(targetEntity: Game::class, mappedBy: 'bracket', cascade: ['persist', 'remove'])]
@@ -78,26 +80,47 @@ class Bracket
         return $this->games;
     }
 
-    public function getPlayer1Name(): string
+    public function getPlayer1(): ?User
     {
-        return $this->player1Name;
+        return $this->player1;
     }
 
-    public function setPlayer1Name(string $player1Name): self
+    public function setPlayer1(?User $player1): self
     {
-        $this->player1Name = $player1Name;
+        $this->player1 = $player1;
         return $this;
+    }
+
+    public function getPlayer2(): ?User
+    {
+        return $this->player2;
+    }
+
+    public function setPlayer2(?User $player2): self
+    {
+        $this->player2 = $player2;
+        return $this;
+    }
+
+    public function getPlayer1Name(): string
+    {
+        return $this->player1?->getUsername() ?? 'Player 1';
     }
 
     public function getPlayer2Name(): string
     {
-        return $this->player2Name;
+        return $this->player2?->getUsername() ?? 'Player 2';
     }
 
-    public function setPlayer2Name(string $player2Name): self
+    public function getPlayerNumber(User $user): ?int
     {
-        $this->player2Name = $player2Name;
-        return $this;
+        if ($this->player1 && $this->player1->getId() === $user->getId()) {
+            return 1;
+        }
+        if ($this->player2 && $this->player2->getId() === $user->getId()) {
+            return 2;
+        }
+        return null;
     }
 
     public function addGame(Game $game): self

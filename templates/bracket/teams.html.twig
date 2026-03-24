@@ -6,7 +6,16 @@
 <h1 class="text-xl font-bold text-gray-800 mb-1">Enter Teams</h1>
 <p class="text-sm text-gray-500 mb-4">{{ bracket.name }} ({{ bracket.year }})</p>
 
-<form method="post" class="space-y-6">
+<div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+    <p class="text-sm text-blue-600 mb-3">Auto-fill all 64 teams from ESPN tournament data, or enter manually below.</p>
+    <button type="button" id="btn-pull-teams" onclick="pullTeams({{ bracket.id }})"
+            class="bg-blue-700 text-white px-4 py-2 rounded text-sm font-medium hover:bg-blue-800">
+        Pull Teams from API
+    </button>
+    <div id="api-error" class="hidden mt-3 text-sm text-red-600"></div>
+</div>
+
+<form method="post" id="teams-form" class="space-y-6">
     {% for region in regions %}
         <div class="bg-white rounded-lg shadow p-4">
             <h2 class="font-bold text-gray-700 mb-3">{{ region }}</h2>
@@ -16,14 +25,18 @@
                         <span class="text-xs text-gray-400 w-5 text-right">{{ seed }}</span>
                         <input type="text"
                                name="team_{{ region }}_{{ seed }}"
+                               id="team_{{ region }}_{{ seed }}"
                                value="{{ existingTeams[region][seed] ?? '' }}"
                                placeholder="{{ seed }} seed"
                                class="flex-1 border border-gray-200 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        <input type="hidden" name="apiname_{{ region }}_{{ seed }}" id="apiname_{{ region }}_{{ seed }}">
                     </div>
                 {% endfor %}
             </div>
         </div>
     {% endfor %}
+
+    <div id="eventid-fields"></div>
 
     <button type="submit"
             class="w-full bg-blue-700 text-white py-2 rounded font-medium hover:bg-blue-800">
@@ -31,5 +44,4 @@
     </button>
 </form>
 
-<a href="{{ path('app_bracket_show', {id: bracket.id}) }}" class="block text-center text-sm text-blue-600 mt-4 hover:underline">Skip for now</a>
 {% endblock %}

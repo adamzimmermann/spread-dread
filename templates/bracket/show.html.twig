@@ -41,32 +41,65 @@
 {# Action buttons #}
 <div class="flex gap-2 mb-4">
     <button onclick="pullSpreads({{ bracket.id }}, {{ currentRound }})"
-            class="flex-1 bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded text-sm font-medium hover:bg-gray-50"
-            id="btn-spreads">
+            class="flex-1 bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded text-sm font-medium hover:bg-gray-50 cursor-pointer"
+            id="btn-spreads"
+            data-has-spreads="{{ roundHasSpreads ? '1' : '0' }}"
+            data-has-picks="{{ roundHasPicks ? '1' : '0' }}">
         Pull Spreads
     </button>
     <button onclick="updateScores({{ bracket.id }}, {{ currentRound }})"
-            class="flex-1 bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded text-sm font-medium hover:bg-gray-50"
+            class="flex-1 bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded text-sm font-medium hover:bg-gray-50 cursor-pointer"
             id="btn-scores">
         Update Scores
     </button>
-    <a href="{{ path('app_bracket_teams', {id: bracket.id}) }}"
-       class="bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded text-sm font-medium hover:bg-gray-50">
-        Teams
-    </a>
 </div>
 
+{% set showRegionTabs = currentRound <= 3 %}
+
+{# Sticky region tabs — rounds 1-3 only #}
+{% if showRegionTabs %}
+    <div class="sticky z-[9] bg-gray-100 -mx-4 px-4 py-2 border-b border-gray-200" id="region-tabs" style="top: 0px">
+        <div class="flex gap-2">
+            {% for region in ['East', 'West', 'South', 'Midwest'] %}
+                <button onclick="scrollToRegion('{{ region }}')"
+                        class="flex-1 text-center px-2 py-1.5 rounded-full text-xs font-medium bg-white text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer region-tab"
+                        data-region="{{ region }}">
+                    {{ region }}
+                </button>
+            {% endfor %}
+        </div>
+    </div>
+{% endif %}
+
 {# Game cards #}
-<div class="space-y-3" id="game-list">
+<div class="space-y-3 {{ showRegionTabs ? 'mt-3' : '' }}" id="game-list">
+    {% set currentRegion = null %}
     {% for game in games %}
+        {% if showRegionTabs and game.region != currentRegion %}
+            {% if currentRegion is not null %}
+                <div class="text-center pt-1 pb-2">
+                    <button onclick="window.scrollTo({ top: 0, behavior: 'smooth' })" class="text-xs text-gray-400 hover:text-gray-600 cursor-pointer">Back to top</button>
+                </div>
+            {% endif %}
+            {% set currentRegion = game.region %}
+            <div id="region-{{ game.region }}" class="pt-1">
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">{{ game.region }} Region</h3>
+            </div>
+        {% endif %}
         <div id="game-card-{{ game.id }}">
             {% include 'game/_card.html.twig' with {
                 game: game,
                 player1_name: scores.player1_name,
-                player2_name: scores.player2_name
+                player2_name: scores.player2_name,
+                current_player: current_player
             } %}
         </div>
     {% endfor %}
+    {% if showRegionTabs and currentRegion is not null %}
+        <div class="text-center pt-1 pb-2">
+            <button onclick="window.scrollTo({ top: 0, behavior: 'smooth' })" class="text-xs text-gray-400 hover:text-gray-600 cursor-pointer">Back to top</button>
+        </div>
+    {% endif %}
 
     {% if games is empty %}
         <p class="text-gray-500 text-center py-8">No games in this round yet.</p>

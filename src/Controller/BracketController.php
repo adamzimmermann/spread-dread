@@ -3,12 +3,12 @@
 namespace App\Controller;
 
 use App\Entity\Bracket;
-use App\Entity\Team;
+use App\Entity\User;
 use App\Repository\BracketRepository;
 use App\Repository\GameRepository;
-use App\Repository\TeamRepository;
+use App\Repository\UserRepository;
 use App\Service\BracketBuilderService;
-use App\Service\OddsApiService;
+use App\Service\EspnApiService;
 use App\Service\ScoringService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -20,10 +20,10 @@ use Symfony\Component\Routing\Attribute\Route;
 class BracketController extends AbstractController
 {
     #[Route('/brackets', name: 'app_bracket_index')]
-    public function index(Request $request, BracketRepository $bracketRepository): Response
+    public function index(Request $request, BracketRepository $bracketRepository, UserRepository $userRepository): Response
     {
-        $this->requireAuth($request);
-        $brackets = $bracketRepository->findBy([], ['createdAt' => 'DESC']);
+        $user = $this->requireUser($request, $userRepository);
+        $brackets = $bracketRepository->findByUser($user);
 
         return $this->render('bracket/index.html.twig', [
             'brackets' => $brackets,
@@ -35,8 +35,10 @@ class BracketController extends AbstractController
         Request $request,
         EntityManagerInterface $em,
         BracketBuilderService $bracketBuilder,
+        EspnApiService $espnApiService,
+        UserRepository $userRepository,
     ): Response {
-        $this->requireAuth($request);
+        $user = $this->requireUser($request, $userRepository);
 
         if ($request->isMethod('POST')) {
             $name = trim($request->request->get('name', ''));
@@ -44,31 +46,42 @@ class BracketController extends AbstractController
 
             if (empty($name)) {
                 $this->addFlash('error', 'Bracket name is required.');
-                return $this->render('bracket/create.html.twig');
+                return $this->render('bracket/create.html.twig', [
+                    'users' => $userRepository->findAll(),
+                ]);
             }
 
             $bracket = new Bracket();
             $bracket->setName($name);
             $bracket->setYear($year);
 
-            $player1 = trim($request->request->get('player1_name', ''));
-            $player2 = trim($request->request->get('player2_name', ''));
-            if (!empty($player1)) {
-                $bracket->setPlayer1Name($player1);
+            $player1Id = $request->request->get('player1_id');
+            $player2Id = $request->request->get('player2_id');
+            if ($player1Id) {
+                $bracket->setPlayer1($userRepository->find((int) $player1Id));
             }
-            if (!empty($player2)) {
-                $bracket->setPlayer2Name($player2);
+            if ($player2Id) {
+                $bracket->setPlayer2($userRepository->find((int) $player2Id));
             }
 
             $em->persist($bracket);
 
             $bracketBuilder->buildBracket($bracket);
 
-            $this->addFlash('success', 'Bracket created! Now add teams.');
-            return $this->redirectToRoute('app_bracket_teams', ['id' => $bracket->getId()]);
+            // Auto-populate teams from ESPN
+            $teamResult = $espnApiService->populateBracketTeams($bracket);
+            if ($teamResult['success']) {
+                $this->addFlash('success', 'Bracket created with ' . $teamResult['count'] . ' teams loaded from ESPN!');
+            } else {
+                $this->addFlash('warning', 'Bracket created but teams could not be loaded: ' . ($teamResult['error'] ?? 'Unknown error'));
+            }
+
+            return $this->redirectToRoute('app_bracket_show', ['id' => $bracket->getId()]);
         }
 
-        return $this->render('bracket/create.html.twig');
+        return $this->render('bracket/create.html.twig', [
+            'users' => $userRepository->findAll(),
+        ]);
     }
 
     #[Route('/brackets/{id}/edit', name: 'app_bracket_edit', methods: ['GET', 'POST'])]
@@ -76,23 +89,21 @@ class BracketController extends AbstractController
         Request $request,
         Bracket $bracket,
         EntityManagerInterface $em,
+        UserRepository $userRepository,
     ): Response {
-        $this->requireAuth($request);
+        $user = $this->requireUser($request, $userRepository);
 
         if ($request->isMethod('POST')) {
             $name = trim($request->request->get('name', ''));
-            $player1 = trim($request->request->get('player1_name', ''));
-            $player2 = trim($request->request->get('player2_name', ''));
 
             if (!empty($name)) {
                 $bracket->setName($name);
             }
-            if (!empty($player1)) {
-                $bracket->setPlayer1Name($player1);
-            }
-            if (!empty($player2)) {
-                $bracket->setPlayer2Name($player2);
-            }
+
+            $player1Id = $request->request->get('player1_id');
+            $player2Id = $request->request->get('player2_id');
+            $bracket->setPlayer1($player1Id ? $userRepository->find((int) $player1Id) : null);
+            $bracket->setPlayer2($player2Id ? $userRepository->find((int) $player2Id) : null);
 
             $em->flush();
 
@@ -102,94 +113,7 @@ class BracketController extends AbstractController
 
         return $this->render('bracket/edit.html.twig', [
             'bracket' => $bracket,
-        ]);
-    }
-
-    #[Route('/brackets/{id}/teams', name: 'app_bracket_teams', methods: ['GET', 'POST'])]
-    public function teams(
-        Request $request,
-        Bracket $bracket,
-        TeamRepository $teamRepository,
-        EntityManagerInterface $em,
-        GameRepository $gameRepository,
-    ): Response {
-        $this->requireAuth($request);
-
-        $regions = ['East', 'West', 'South', 'Midwest'];
-        $seedMatchups = [
-            [1, 16], [8, 9], [5, 12], [4, 13],
-            [6, 11], [3, 14], [7, 10], [2, 15],
-        ];
-
-        if ($request->isMethod('POST')) {
-            // Process team entries per region
-            foreach ($regions as $region) {
-                for ($seed = 1; $seed <= 16; $seed++) {
-                    $teamName = trim($request->request->get("team_{$region}_{$seed}", ''));
-                    if (empty($teamName)) {
-                        continue;
-                    }
-
-                    // Check if team already exists
-                    $existing = $teamRepository->findOneBy([
-                        'year' => $bracket->getYear(),
-                        'region' => $region,
-                        'seed' => $seed,
-                    ]);
-
-                    if ($existing) {
-                        $existing->setName($teamName);
-                    } else {
-                        $team = new Team();
-                        $team->setName($teamName);
-                        $team->setSeed($seed);
-                        $team->setRegion($region);
-                        $team->setYear($bracket->getYear());
-                        $em->persist($team);
-                    }
-                }
-            }
-            $em->flush();
-
-            // Now assign teams to R64 games
-            $r64Games = $gameRepository->findByBracketAndRound($bracket, 1);
-            $teams = $teamRepository->findByYear($bracket->getYear());
-            $teamsByRegion = [];
-            foreach ($teams as $team) {
-                $teamsByRegion[$team->getRegion()][$team->getSeed()] = $team;
-            }
-
-            foreach ($r64Games as $game) {
-                $region = $game->getRegion();
-                $pos = $game->getBracketPosition();
-                $matchup = $seedMatchups[$pos - 1];
-
-                if (isset($teamsByRegion[$region][$matchup[0]])) {
-                    $game->setTeam1($teamsByRegion[$region][$matchup[0]]);
-                }
-                if (isset($teamsByRegion[$region][$matchup[1]])) {
-                    $game->setTeam2($teamsByRegion[$region][$matchup[1]]);
-                }
-            }
-            $em->flush();
-
-            $this->addFlash('success', 'Teams saved!');
-            return $this->redirectToRoute('app_bracket_show', ['id' => $bracket->getId()]);
-        }
-
-        // Load existing teams
-        $existingTeams = [];
-        foreach ($regions as $region) {
-            $regionTeams = $teamRepository->findByYearAndRegion($bracket->getYear(), $region);
-            foreach ($regionTeams as $team) {
-                $existingTeams[$region][$team->getSeed()] = $team->getName();
-            }
-        }
-
-        return $this->render('bracket/teams.html.twig', [
-            'bracket' => $bracket,
-            'regions' => $regions,
-            'existingTeams' => $existingTeams,
+            'users' => $userRepository->findAll(),
         ]);
     }
 
@@ -199,8 +123,10 @@ class BracketController extends AbstractController
         Bracket $bracket,
         GameRepository $gameRepository,
         ScoringService $scoringService,
+        UserRepository $userRepository,
     ): Response {
-        $this->requireAuth($request);
+        $user = $this->requireUser($request, $userRepository);
+        $currentPlayer = $bracket->getPlayerNumber($user);
 
         $round = (int) $request->query->get('round', 1);
         $games = $gameRepository->findByBracketAndRound($bracket, $round);
@@ -215,12 +141,29 @@ class BracketController extends AbstractController
             }
         }
 
+        $hasSpreads = false;
+        $hasPicks = false;
+        foreach ($games as $game) {
+            if ($game->getSpread() !== null) {
+                $hasSpreads = true;
+            }
+            if (!$game->getPicks()->isEmpty()) {
+                $hasPicks = true;
+            }
+            if ($hasSpreads && $hasPicks) {
+                break;
+            }
+        }
+
         return $this->render('bracket/show.html.twig', [
             'bracket' => $bracket,
             'games' => $games,
             'currentRound' => $round,
             'availableRounds' => $availableRounds,
             'scores' => $scores,
+            'current_player' => $currentPlayer,
+            'roundHasSpreads' => $hasSpreads,
+            'roundHasPicks' => $hasPicks,
         ]);
     }
 
@@ -228,28 +171,53 @@ class BracketController extends AbstractController
     public function pullSpreads(
         Request $request,
         Bracket $bracket,
-        OddsApiService $oddsApiService,
+        EspnApiService $espnApiService,
+        GameRepository $gameRepository,
+        ScoringService $scoringService,
+        UserRepository $userRepository,
     ): JsonResponse {
-        $this->requireAuth($request);
+        $user = $this->requireUser($request, $userRepository);
+        $currentPlayer = $bracket->getPlayerNumber($user);
 
         $round = (int) $request->request->get('round', 1);
-        $result = $oddsApiService->pullSpreads($bracket, $round);
+        $result = $espnApiService->pullSpreads($bracket, $round);
 
-        return $this->json($result);
+        $games = $gameRepository->findByBracketAndRound($bracket, $round);
+        $unmatchedIds = $result['unmatched'] ?? [];
+        $cards = [];
+        foreach ($games as $game) {
+            $cards[$game->getId()] = $this->renderView('game/_card.html.twig', [
+                'game' => $game,
+                'player1_name' => $bracket->getPlayer1Name(),
+                'player2_name' => $bracket->getPlayer2Name(),
+                'current_player' => $currentPlayer,
+                'warning' => in_array($game->getId(), $unmatchedIds) ? 'No API match found — spread must be set manually' : null,
+            ]);
+        }
+
+        $scores = $scoringService->calculateScores($bracket);
+
+        return $this->json([
+            'result' => $result,
+            'cards' => $cards,
+            'scores' => $scores,
+        ]);
     }
 
     #[Route('/api/brackets/{id}/update-scores', name: 'api_bracket_update_scores', methods: ['POST'])]
     public function updateScores(
         Request $request,
         Bracket $bracket,
-        OddsApiService $oddsApiService,
+        EspnApiService $espnApiService,
         ScoringService $scoringService,
         GameRepository $gameRepository,
+        UserRepository $userRepository,
     ): JsonResponse {
-        $this->requireAuth($request);
+        $user = $this->requireUser($request, $userRepository);
+        $currentPlayer = $bracket->getPlayerNumber($user);
 
         $round = (int) $request->request->get('round', 1);
-        $result = $oddsApiService->updateScores($bracket, $round);
+        $result = $espnApiService->updateScores($bracket, $round);
 
         // Evaluate picks and advance winners for completed games
         $games = $gameRepository->findByBracketAndRound($bracket, $round);
@@ -260,18 +228,34 @@ class BracketController extends AbstractController
             }
         }
 
+        $unmatchedIds = $result['unmatched'] ?? [];
+        $cards = [];
+        foreach ($games as $game) {
+            $cards[$game->getId()] = $this->renderView('game/_card.html.twig', [
+                'game' => $game,
+                'player1_name' => $bracket->getPlayer1Name(),
+                'player2_name' => $bracket->getPlayer2Name(),
+                'current_player' => $currentPlayer,
+                'warning' => in_array($game->getId(), $unmatchedIds) ? 'No API match found — scores must be entered manually' : null,
+            ]);
+        }
+
         $scores = $scoringService->calculateScores($bracket);
 
         return $this->json([
             'result' => $result,
+            'cards' => $cards,
             'scores' => $scores,
         ]);
     }
 
-    private function requireAuth(Request $request): void
+    private function requireUser(Request $request, UserRepository $userRepository): User
     {
-        if (!$request->getSession()->get('authenticated')) {
+        $userId = $request->getSession()->get('user_id');
+        $user = $userId ? $userRepository->find($userId) : null;
+        if (!$user) {
             throw $this->createAccessDeniedException();
         }
+        return $user;
     }
 }

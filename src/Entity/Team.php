@@ -25,6 +25,9 @@ class Team
     #[ORM\Column]
     private int $year;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $apiName = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -71,6 +74,17 @@ class Team
     public function setYear(int $year): self
     {
         $this->year = $year;
+        return $this;
+    }
+
+    public function getApiName(): ?string
+    {
+        return $this->apiName;
+    }
+
+    public function setApiName(?string $apiName): self
+    {
+        $this->apiName = $apiName;
         return $this;
     }
 

@@ -24,6 +24,12 @@ ddev exec php bin/console doctrine:migrations:diff
 ddev exec php bin/console doctrine:migrations:migrate
 ```
 
+Build Tailwind CSS (required after changing Tailwind classes in templates or assets):
+```bash
+ddev exec php bin/console tailwind:build
+ddev exec php bin/console tailwind:build --watch   # Development watch mode
+```
+
 Clear cache:
 ```bash
 ddev exec php bin/console cache:clear
@@ -51,7 +57,7 @@ Simple session-based shared password (not Symfony's security system). Password s
 
 ### Frontend
 
-No build step. Tailwind CSS via CDN. Vanilla JS (`public/js/app.js`) using fetch API for AJAX interactions (picks, spreads, scores). Pick assignment returns rendered Twig partial HTML that replaces the game card in-place.
+Tailwind CSS compiled via `symfonycasts/tailwind-bundle` (standalone Tailwind CLI, no Node.js). CSS source in `assets/styles/app.css`, JS in `assets/app.js`, served via Symfony AssetMapper. Run `tailwind:build` after changing Tailwind classes. Vanilla JS using fetch API for AJAX interactions (picks, spreads, scores). Pick assignment returns rendered Twig partial HTML that replaces the game card in-place.
 
 ### API Routes
 

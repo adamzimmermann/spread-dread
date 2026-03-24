@@ -1,3 +1,7 @@
+@import "tailwindcss";
+@source "../../templates";
+@source "../";
+
 /* Custom styles for March Madness bracket app */
 
 /* Smooth scrolling for round tabs */
@@ -13,6 +17,12 @@
 .loading {
     opacity: 0.6;
     pointer-events: none;
+}
+
+/* Active region tab — uses custom class to avoid Tailwind v4 source-order specificity issues */
+.region-tab-active {
+    background-color: var(--color-blue-700) !important;
+    color: var(--color-white) !important;
 }
 
 /* Transition for card updates */

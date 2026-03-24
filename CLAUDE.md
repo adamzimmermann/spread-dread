@@ -8,7 +8,7 @@ DDEV-based local development: PHP 8.4, MySQL 8.0, Apache.
 
 ```bash
 ddev start                                              # Start containers
-ddev composer install                                   # Install deps + build CSS
+ddev composer install                                   # Install deps
 ddev exec php bin/console doctrine:migrations:migrate   # Run migrations
 ddev launch                                             # Open https://spread-dread.ddev.site
 ```

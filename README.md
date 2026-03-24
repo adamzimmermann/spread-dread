@@ -8,6 +8,7 @@ Built with Symfony 7, Tailwind CSS, and vanilla JavaScript.
 
 - **63-game bracket** automatically wired with correct NCAA seed matchups across all six rounds
 - **Point spread competition** — picks are evaluated against the spread, not straight-up winners
+- **Turn-based picking** — players alternate picks within each round, with pick progress tracking
 - **ESPN integration** — pull tournament teams, spreads, and final scores directly from ESPN's API
 - **Live score updates** — pull scores for completed games and automatically advance winners
 - **Per-user authentication** — each player logs in with their own account
@@ -28,8 +29,6 @@ ddev composer install
 ddev exec php bin/console doctrine:migrations:migrate
 ddev launch
 ```
-
-`composer install` automatically builds the Tailwind CSS via an auto-script.
 
 ### Create or Update Users
 
@@ -53,6 +52,8 @@ For automatic rebuilds during development:
 ddev exec php bin/console tailwind:build --watch
 ```
 
+The built CSS (`var/tailwind/app.built.css`) is committed to the repo since the production server can't run the Tailwind binary. Always run `tailwind:build` locally before committing template changes.
+
 ### Database Changes
 
 After modifying Doctrine entities:
@@ -72,14 +73,19 @@ ddev exec php bin/console cache:clear
 
 1. **Create a bracket** — set the tournament year and assign two players
 2. **Pull teams** — fetch the 68-team field from ESPN, or enter teams manually
-3. **Make picks** — each player taps a team per game; the opponent automatically gets the other team
+3. **Make picks** — players take turns picking teams; the opponent automatically gets the other team
 4. **Pull spreads** — fetch point spreads from ESPN for each round
 5. **Update scores** — pull final scores from ESPN; the app evaluates picks against the spread and advances winners to the next round
 6. **Track the score** — a sticky scoreboard shows each player's running total
+
+## Deployment
+
+Deploys automatically to Dreamhost via GitHub Actions on push to `main`. The workflow SSHs into the server, pulls the latest code, installs dependencies, runs migrations, and compiles assets.
 
 ## Tech Stack
 
 - **Backend:** PHP 8.4, Symfony 7, Doctrine ORM, MySQL 8.0
 - **Frontend:** Tailwind CSS (compiled via standalone CLI), Symfony AssetMapper, vanilla JavaScript
-- **Infrastructure:** DDEV (Apache, MySQL, PHP-FPM)
+- **Infrastructure:** DDEV (local), Dreamhost (production)
 - **External APIs:** ESPN Scoreboard & Summary APIs
+- **CI/CD:** GitHub Actions

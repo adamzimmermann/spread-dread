@@ -17,6 +17,7 @@
 /.ddev/.ddev-docker-compose-*
 /.ddev/db_snapshots/
 /.ddev/.homeadditions/
+/.ddev/traefik/
 
 # Claude Code
 /.claude/

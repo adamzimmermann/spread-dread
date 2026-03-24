@@ -24,6 +24,9 @@ class Bracket
     #[ORM\Column]
     private \DateTimeImmutable $createdAt;
 
+    #[ORM\Column(nullable: true)]
+    private ?int $firstPicker = null;
+
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: true)]
     private ?User $player1 = null;
@@ -130,5 +133,33 @@ class Bracket
             $game->setBracket($this);
         }
         return $this;
+    }
+
+    public function getFirstPicker(): ?int
+    {
+        return $this->firstPicker;
+    }
+
+    public function setFirstPicker(?int $firstPicker): self
+    {
+        $this->firstPicker = $firstPicker;
+        return $this;
+    }
+
+    /**
+     * Determine which player (1 or 2) picks a given game.
+     * Odd rounds use firstPicker for index 0, even rounds flip it.
+     * Within a round, alternate by game index.
+     */
+    public function getPickerForGame(Game $game, int $gameIndex): int
+    {
+        $firstPicker = $this->firstPicker ?? 1;
+        $roundNumber = $game->getRoundNumber();
+
+        // Even rounds flip who goes first
+        $roundPicker = ($roundNumber % 2 === 1) ? $firstPicker : ($firstPicker === 1 ? 2 : 1);
+
+        // Alternate within the round
+        return ($gameIndex % 2 === 0) ? $roundPicker : ($roundPicker === 1 ? 2 : 1);
     }
 }

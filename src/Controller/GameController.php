@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Game;
 use App\Entity\Pick;
 use App\Entity\User;
+use App\Repository\GameRepository;
 use App\Repository\TeamRepository;
 use App\Repository\UserRepository;
 use App\Service\ScoringService;
@@ -22,6 +23,7 @@ class GameController extends AbstractController
         Request $request,
         Game $game,
         EntityManagerInterface $em,
+        GameRepository $gameRepository,
         TeamRepository $teamRepository,
         ScoringService $scoringService,
         UserRepository $userRepository,
@@ -32,6 +34,14 @@ class GameController extends AbstractController
 
         if (!$player) {
             return $this->json(['error' => 'You are not a player in this bracket'], 403);
+        }
+
+        // Enforce turn-based picking (only for brackets with firstPicker set)
+        if ($bracket->getFirstPicker() !== null) {
+            $expectedPicker = $this->getPickerForGame($game, $gameRepository);
+            if ($player !== $expectedPicker) {
+                return $this->json(['error' => 'It is not your turn to pick this game'], 403);
+            }
         }
 
         $teamId = (int) $request->request->get('team_id');
@@ -88,17 +98,49 @@ class GameController extends AbstractController
 
         $scores = $scoringService->calculateScores($bracket);
         $currentPlayer = $player;
+        $picker = $this->getPickerForGame($game, $gameRepository);
 
         $cardHtml = $this->renderView('game/_card.html.twig', [
             'game' => $game,
             'player1_name' => $bracket->getPlayer1Name(),
             'player2_name' => $bracket->getPlayer2Name(),
             'current_player' => $currentPlayer,
+            'picker' => $picker,
         ]);
+
+        // Compute pick progress for the round
+        $roundGames = $gameRepository->findByBracketAndRound($bracket, $game->getRoundNumber());
+        $opponentPlayer = $currentPlayer === 1 ? 2 : 1;
+        $myPicksDone = 0;
+        $myPickTotal = 0;
+        $opponentPicksDone = 0;
+        $opponentPickTotal = 0;
+        foreach ($roundGames as $idx => $g) {
+            if ($g->getTeam1() && $g->getTeam2()) {
+                $gPicker = $bracket->getPickerForGame($g, $idx);
+                if ($gPicker === $currentPlayer) {
+                    $myPickTotal++;
+                    if ($g->getPickForPlayer($currentPlayer)) {
+                        $myPicksDone++;
+                    }
+                } else {
+                    $opponentPickTotal++;
+                    if ($g->getPickForPlayer($opponentPlayer)) {
+                        $opponentPicksDone++;
+                    }
+                }
+            }
+        }
 
         return $this->json([
             'html' => $cardHtml,
             'scores' => $scores,
+            'pickProgress' => [
+                'myDone' => $myPicksDone,
+                'myTotal' => $myPickTotal,
+                'opponentDone' => $opponentPicksDone,
+                'opponentTotal' => $opponentPickTotal,
+            ],
         ]);
     }
 
@@ -107,6 +149,7 @@ class GameController extends AbstractController
         Request $request,
         Game $game,
         EntityManagerInterface $em,
+        GameRepository $gameRepository,
         TeamRepository $teamRepository,
         ScoringService $scoringService,
         UserRepository $userRepository,
@@ -144,17 +187,34 @@ class GameController extends AbstractController
 
         $scores = $scoringService->calculateScores($bracket);
 
+        $picker = $this->getPickerForGame($game, $gameRepository);
+
         return $this->json([
             'html' => $this->renderView('game/_card.html.twig', [
                 'game' => $game,
                 'player1_name' => $bracket->getPlayer1Name(),
                 'player2_name' => $bracket->getPlayer2Name(),
                 'current_player' => $currentPlayer,
+                'picker' => $picker,
             ]),
             'scores' => $scores,
         ]);
     }
 
+    private function getPickerForGame(Game $game, GameRepository $gameRepository): ?int
+    {
+        $bracket = $game->getBracket();
+        if ($bracket->getFirstPicker() === null) {
+            return null;
+        }
+        $roundGames = $gameRepository->findByBracketAndRound($bracket, $game->getRoundNumber());
+        foreach ($roundGames as $index => $g) {
+            if ($g->getId() === $game->getId()) {
+                return $bracket->getPickerForGame($game, $index);
+            }
+        }
+        return null;
+    }
 
     private function requireUser(Request $request, UserRepository $userRepository): User
     {

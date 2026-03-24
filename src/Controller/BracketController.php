@@ -54,6 +54,7 @@ class BracketController extends AbstractController
             $bracket = new Bracket();
             $bracket->setName($name);
             $bracket->setYear($year);
+            $bracket->setFirstPicker(random_int(1, 2));
 
             $player1Id = $request->request->get('player1_id');
             $player2Id = $request->request->get('player2_id');
@@ -143,17 +144,43 @@ class BracketController extends AbstractController
 
         $hasSpreads = false;
         $hasPicks = false;
-        foreach ($games as $game) {
+        $pickerMap = [];
+        $myPicksDone = 0;
+        $myPickTotal = 0;
+        $opponentPicksDone = 0;
+        $opponentPickTotal = 0;
+        $opponentPlayer = $currentPlayer === 1 ? 2 : ($currentPlayer === 2 ? 1 : null);
+
+        foreach ($games as $index => $game) {
             if ($game->getSpread() !== null) {
                 $hasSpreads = true;
             }
             if (!$game->getPicks()->isEmpty()) {
                 $hasPicks = true;
             }
-            if ($hasSpreads && $hasPicks) {
-                break;
+
+            // Compute picker for each game
+            if ($game->getTeam1() && $game->getTeam2()) {
+                $picker = $bracket->getPickerForGame($game, $index);
+                $pickerMap[$game->getId()] = $picker;
+
+                if ($currentPlayer !== null) {
+                    if ($picker === $currentPlayer) {
+                        $myPickTotal++;
+                        if ($game->getPickForPlayer($currentPlayer)) {
+                            $myPicksDone++;
+                        }
+                    } else {
+                        $opponentPickTotal++;
+                        if ($game->getPickForPlayer($opponentPlayer)) {
+                            $opponentPicksDone++;
+                        }
+                    }
+                }
             }
         }
+
+        $opponentName = $currentPlayer === 1 ? $bracket->getPlayer2Name() : $bracket->getPlayer1Name();
 
         return $this->render('bracket/show.html.twig', [
             'bracket' => $bracket,
@@ -164,6 +191,12 @@ class BracketController extends AbstractController
             'current_player' => $currentPlayer,
             'roundHasSpreads' => $hasSpreads,
             'roundHasPicks' => $hasPicks,
+            'pickerMap' => $pickerMap,
+            'myPicksDone' => $myPicksDone,
+            'myPickTotal' => $myPickTotal,
+            'opponentPicksDone' => $opponentPicksDone,
+            'opponentPickTotal' => $opponentPickTotal,
+            'opponentName' => $opponentName,
         ]);
     }
 
@@ -185,12 +218,15 @@ class BracketController extends AbstractController
         $games = $gameRepository->findByBracketAndRound($bracket, $round);
         $unmatchedIds = $result['unmatched'] ?? [];
         $cards = [];
-        foreach ($games as $game) {
+        foreach ($games as $index => $game) {
+            $picker = ($bracket->getFirstPicker() !== null && $game->getTeam1() && $game->getTeam2())
+                ? $bracket->getPickerForGame($game, $index) : null;
             $cards[$game->getId()] = $this->renderView('game/_card.html.twig', [
                 'game' => $game,
                 'player1_name' => $bracket->getPlayer1Name(),
                 'player2_name' => $bracket->getPlayer2Name(),
                 'current_player' => $currentPlayer,
+                'picker' => $picker,
                 'warning' => in_array($game->getId(), $unmatchedIds) ? 'No API match found — spread must be set manually' : null,
             ]);
         }
@@ -230,12 +266,15 @@ class BracketController extends AbstractController
 
         $unmatchedIds = $result['unmatched'] ?? [];
         $cards = [];
-        foreach ($games as $game) {
+        foreach ($games as $index => $game) {
+            $picker = ($bracket->getFirstPicker() !== null && $game->getTeam1() && $game->getTeam2())
+                ? $bracket->getPickerForGame($game, $index) : null;
             $cards[$game->getId()] = $this->renderView('game/_card.html.twig', [
                 'game' => $game,
                 'player1_name' => $bracket->getPlayer1Name(),
                 'player2_name' => $bracket->getPlayer2Name(),
                 'current_player' => $currentPlayer,
+                'picker' => $picker,
                 'warning' => in_array($game->getId(), $unmatchedIds) ? 'No API match found — scores must be entered manually' : null,
             ]);
         }

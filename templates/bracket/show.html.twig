@@ -16,12 +16,18 @@
 <div class="sticky top-0 z-10 bg-blue-700 text-white rounded-lg px-4 py-3 mb-4 shadow-lg" id="score-card">
     <div class="flex items-center justify-between">
         <div class="text-center flex-1">
-            <div class="text-xs uppercase tracking-wide opacity-80">{{ scores.player1_name }}</div>
+            <div class="text-xs uppercase tracking-wide opacity-80 flex items-center justify-center gap-1">
+                <span class="w-2 h-2 rounded-full {{ current_player == 1 ? 'bg-blue-300' : 'bg-red-400' }} inline-block"></span>
+                {{ scores.player1_name }}
+            </div>
             <div class="text-2xl font-bold" id="score-p1">{{ scores.player1 }}</div>
         </div>
         <div class="text-lg font-light opacity-60 px-2">vs</div>
         <div class="text-center flex-1">
-            <div class="text-xs uppercase tracking-wide opacity-80">{{ scores.player2_name }}</div>
+            <div class="text-xs uppercase tracking-wide opacity-80 flex items-center justify-center gap-1">
+                <span class="w-2 h-2 rounded-full {{ current_player == 2 ? 'bg-blue-300' : 'bg-red-400' }} inline-block"></span>
+                {{ scores.player2_name }}
+            </div>
             <div class="text-2xl font-bold" id="score-p2">{{ scores.player2 }}</div>
         </div>
     </div>
@@ -53,6 +59,34 @@
         Update Scores
     </button>
 </div>
+
+{# Pick progress indicator #}
+{% if myPickTotal > 0 %}
+<div class="flex gap-2 mb-4" id="pick-progress">
+    <div class="flex-1 bg-white rounded-lg border border-gray-200 p-2.5" id="pick-progress-my">
+        <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-medium text-blue-700">My picks</span>
+            <span class="text-xs text-gray-500" id="pick-progress-my-text">{{ myPicksDone }}/{{ myPickTotal }}</span>
+        </div>
+        <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div class="h-full rounded-full transition-all {{ myPicksDone == myPickTotal ? 'bg-green-500' : 'bg-blue-500' }}"
+                 id="pick-progress-my-bar"
+                 style="width: {{ myPickTotal > 0 ? (myPicksDone / myPickTotal * 100) : 0 }}%"></div>
+        </div>
+    </div>
+    <div class="flex-1 bg-white rounded-lg border border-gray-200 p-2.5" id="pick-progress-opponent">
+        <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-medium text-red-600">{{ opponentName }}'s picks</span>
+            <span class="text-xs text-gray-500" id="pick-progress-opponent-text">{{ opponentPicksDone }}/{{ opponentPickTotal }}</span>
+        </div>
+        <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div class="h-full rounded-full transition-all {{ opponentPicksDone == opponentPickTotal ? 'bg-green-500' : 'bg-red-400' }}"
+                 id="pick-progress-opponent-bar"
+                 style="width: {{ opponentPickTotal > 0 ? (opponentPicksDone / opponentPickTotal * 100) : 0 }}%"></div>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 {% set showRegionTabs = currentRound <= 3 %}
 
@@ -91,7 +125,8 @@
                 game: game,
                 player1_name: scores.player1_name,
                 player2_name: scores.player2_name,
-                current_player: current_player
+                current_player: current_player,
+                picker: pickerMap[game.id] is defined ? pickerMap[game.id] : null
             } %}
         </div>
     {% endfor %}

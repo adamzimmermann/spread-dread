@@ -95,6 +95,30 @@ function updateScoreCard(scores) {
     document.getElementById('score-p2').textContent = scores.player2;
 }
 
+function updatePickProgress(progress) {
+    if (!progress) return;
+    var myText = document.getElementById('pick-progress-my-text');
+    var myBar = document.getElementById('pick-progress-my-bar');
+    var oppText = document.getElementById('pick-progress-opponent-text');
+    var oppBar = document.getElementById('pick-progress-opponent-bar');
+    if (myText) myText.textContent = progress.myDone + '/' + progress.myTotal;
+    if (myBar) {
+        var myPct = progress.myTotal > 0 ? (progress.myDone / progress.myTotal * 100) : 0;
+        myBar.style.width = myPct + '%';
+        myBar.className = myBar.className.replace(/bg-\w+-\d+/g, '');
+        myBar.classList.add('h-full', 'rounded-full', 'transition-all');
+        myBar.classList.add(progress.myDone === progress.myTotal ? 'bg-green-500' : 'bg-blue-500');
+    }
+    if (oppText) oppText.textContent = progress.opponentDone + '/' + progress.opponentTotal;
+    if (oppBar) {
+        var oppPct = progress.opponentTotal > 0 ? (progress.opponentDone / progress.opponentTotal * 100) : 0;
+        oppBar.style.width = oppPct + '%';
+        oppBar.className = oppBar.className.replace(/bg-\w+-\d+/g, '');
+        oppBar.classList.add('h-full', 'rounded-full', 'transition-all');
+        oppBar.classList.add(progress.opponentDone === progress.opponentTotal ? 'bg-green-500' : 'bg-red-400');
+    }
+}
+
 function updateGameCard(gameId, html) {
     var card = document.getElementById('game-card-' + gameId);
     if (card) card.innerHTML = html;
@@ -125,6 +149,7 @@ function assignPick(gameId, teamId) {
     .then(function(data) {
         card.innerHTML = data.html;
         updateScoreCard(data.scores);
+        updatePickProgress(data.pickProgress);
     })
     .catch(function(err) {
         alert('Error saving pick: ' + err.message);
@@ -310,6 +335,7 @@ function updateScores(bracketId, round) {
 // Expose functions globally for onclick handlers in templates
 window.scrollToRegion = scrollToRegion;
 window.updateScoreCard = updateScoreCard;
+window.updatePickProgress = updatePickProgress;
 window.updateGameCard = updateGameCard;
 window.updateGameCards = updateGameCards;
 window.assignPick = assignPick;

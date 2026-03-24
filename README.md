@@ -21,8 +21,8 @@ Built with Symfony 7, Tailwind CSS, and vanilla JavaScript.
 ## Setup
 
 ```bash
-git clone <repo-url> march-madness
-cd march-madness
+git clone <repo-url> spread-dread
+cd spread-dread
 ddev start
 ddev composer install
 ddev exec php bin/console doctrine:migrations:migrate
@@ -81,7 +81,7 @@ ddev exec php bin/console cache:clear
 
 ## Tech Stack
 
-- **Backend:** PHP 8.2, Symfony 7, Doctrine ORM, MySQL 8.0
+- **Backend:** PHP 8.4, Symfony 7, Doctrine ORM, MySQL 8.0
 - **Frontend:** Tailwind CSS (compiled via standalone CLI), Symfony AssetMapper, vanilla JavaScript
 - **Infrastructure:** DDEV (Apache, MySQL, PHP-FPM)
 - **External APIs:** ESPN Scoreboard & Summary APIs

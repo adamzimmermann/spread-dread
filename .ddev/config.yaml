@@ -1,7 +1,7 @@
-name: march-madness
+name: spread-dread
 type: php
 docroot: public
-php_version: "8.2"
+php_version: "8.4"
 webserver_type: apache-fpm
 xdebug_enabled: false
 additional_hostnames: []

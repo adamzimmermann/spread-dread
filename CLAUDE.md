@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Environment
 
-DDEV-based local development: PHP 8.2, MySQL 8.0, Apache.
+DDEV-based local development: PHP 8.4, MySQL 8.0, Apache.
 
 ```bash
 ddev start                                              # Start containers
 ddev composer install                                   # Install deps + build CSS
 ddev exec php bin/console doctrine:migrations:migrate   # Run migrations
-ddev launch                                             # Open https://march-madness.ddev.site
+ddev launch                                             # Open https://spread-dread.ddev.site
 ```
 
 Run Symfony console commands inside DDEV:

@@ -34,10 +34,17 @@ The built CSS (`var/tailwind/app.built.css`) is committed to the repo so the pro
 
 Run tests:
 ```bash
-ddev composer test
+ddev composer test                                          # Full suite
+ddev exec php bin/phpunit --filter testCoversSpread         # Single test by method name
+ddev exec php bin/phpunit tests/Service/ScoringServiceTest.php   # Single file
 ```
 
-Tests use PHPUnit with `dama/doctrine-test-bundle` for transaction isolation (each test rolls back automatically). The test suite shares the dev database but all changes are rolled back. Always run tests before pushing code.
+Tests use PHPUnit with `dama/doctrine-test-bundle` for transaction isolation (each test rolls back automatically). The test suite shares the dev database but all changes are rolled back. PHPUnit is configured to fail on deprecations, notices, and warnings (`phpunit.dist.xml`). Always run tests before pushing code.
+
+Create or update a user account (password is hashed with bcrypt):
+```bash
+ddev exec php bin/console app:user <username> <password>
+```
 
 Clear cache:
 ```bash
@@ -54,6 +61,8 @@ This is a Symfony 7 app for two players to compete on NCAA Tournament brackets u
 
 The bracket tree wiring: odd `bracketPosition` feeds into `team1` of the next game, even feeds into `team2`. Region pairs East/West and South/Midwest merge in the Final Four.
 
+**Round** stores per-year round metadata (round number, name, start/end dates). **Setting** is a simple key/value store (`setting_key`/`setting_value`) for app-wide configuration.
+
 ### Key Services
 
 - **BracketBuilderService** — Creates the 63-game bracket structure (32+16+8+4+2+1) with correct NCAA seed matchups and `nextGame` wiring.
@@ -63,7 +72,7 @@ The bracket tree wiring: odd `bracketPosition` feeds into `team1` of the next ga
 
 ### Authentication
 
-Per-user session-based authentication. **User** entities store username and password. Users log in and are associated with a bracket as player 1 or player 2. Controllers call `requireUser()` to enforce authentication.
+Authentication is **fully custom and bypasses Symfony's security component** — the `security.yaml` firewall/provider config is vestigial (empty in-memory provider, no access control). Login (`SecurityController`) looks up the **User** entity by username, verifies the password with `password_verify()` against the stored bcrypt hash, and stores `user_id`/`username` in the session. Controllers call the private `requireUser()` helper (in `BracketController`/`GameController`) to read the session and enforce authentication — do not rely on `$this->getUser()` or `IsGranted`. Users are associated with a bracket as player 1 or player 2.
 
 ### Frontend
 

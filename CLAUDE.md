@@ -41,9 +41,10 @@ ddev exec php bin/phpunit tests/Service/ScoringServiceTest.php   # Single file
 
 Tests use PHPUnit with `dama/doctrine-test-bundle` for transaction isolation (each test rolls back automatically). The test suite shares the dev database but all changes are rolled back. PHPUnit is configured to fail on deprecations, notices, and warnings (`phpunit.dist.xml`). Always run tests before pushing code.
 
-Create or update a user account (password is hashed with bcrypt):
+Create or update a user account (password is hashed with bcrypt). Creating a new
+account requires `--email`; updating an existing one does not:
 ```bash
-ddev exec php bin/console app:user <username> <password>
+ddev exec php bin/console app:user <username> <password> --email=<address>
 ```
 
 Clear cache:
@@ -72,7 +73,25 @@ The bracket tree wiring: odd `bracketPosition` feeds into `team1` of the next ga
 
 ### Authentication
 
-Authentication is **fully custom and bypasses Symfony's security component** — the `security.yaml` firewall/provider config is vestigial (empty in-memory provider, no access control). Login (`SecurityController`) looks up the **User** entity by username, verifies the password with `password_verify()` against the stored bcrypt hash, and stores `user_id`/`username` in the session. Controllers call the private `requireUser()` helper (in `BracketController`/`GameController`) to read the session and enforce authentication — do not rely on `$this->getUser()` or `IsGranted`. Users are associated with a bracket as player 1 or player 2.
+Authentication is **fully custom and bypasses Symfony's security component** — the
+`security.yaml` firewall/provider config is vestigial. Login (`SecurityController`)
+looks up the **User** entity by username, verifies the password with
+`password_verify()`, and stores `user_id`/`username` in the session.
+
+All authentication and authorization goes through `App\Security\SessionAuthenticator`:
+`requireUser()`, `requireAdmin()`, and `requireBracketAccess($bracket)`. Do not use
+`$this->getUser()` or `IsGranted`. `getUser()` returns null for a disabled account,
+so disabling a user ejects them on their next request.
+
+Accounts are created by **invitation only**. An admin sends an invite from `/admin`;
+the recipient sets a username and password at `/invite/{token}`. Users are associated
+with a bracket as player 1 (always the creator) or player 2. `app:user` remains as a
+break-glass CLI path and is how the first admin is created:
+
+    ddev exec php bin/console app:user <username> <password> --email=<address> --admin
+
+Invite and password-reset tokens are stored as SHA-256 hashes; the raw token exists
+only in the email. Every form and AJAX call carries a CSRF token under the id `app`.
 
 ### Frontend
 

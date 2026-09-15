@@ -51,6 +51,10 @@ class UserCommand extends Command
                 $io->error('Password is required when creating a new user.');
                 return Command::FAILURE;
             }
+            if (!$email) {
+                $io->error('Email is required when creating a new user.');
+                return Command::FAILURE;
+            }
             $user = new User();
             $user->setUsername($username);
             $this->em->persist($user);

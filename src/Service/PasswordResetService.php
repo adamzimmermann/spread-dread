@@ -42,7 +42,7 @@ class PasswordResetService
         $this->lastToken = null;
 
         $user = $this->userRepository->findByEmail($email);
-        if (!$user || !$user->isActive() || $user->getEmail() === null) {
+        if (!$user || !$user->isActive()) {
             return;
         }
 

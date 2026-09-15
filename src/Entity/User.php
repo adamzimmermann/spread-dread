@@ -20,8 +20,8 @@ class User
     #[ORM\Column(length: 255)]
     private string $password;
 
-    #[ORM\Column(length: 180, unique: true, nullable: true)]
-    private ?string $email = null;
+    #[ORM\Column(length: 180, unique: true)]
+    private string $email;
 
     #[ORM\Column]
     private bool $isAdmin = false;
@@ -71,14 +71,14 @@ class User
         return $this;
     }
 
-    public function getEmail(): ?string
+    public function getEmail(): string
     {
         return $this->email;
     }
 
-    public function setEmail(?string $email): self
+    public function setEmail(string $email): self
     {
-        $this->email = $email === null ? null : strtolower(trim($email));
+        $this->email = strtolower(trim($email));
         return $this;
     }
 

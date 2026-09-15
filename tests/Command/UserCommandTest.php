@@ -52,6 +52,20 @@ class UserCommandTest extends KernelTestCase
         $this->assertStringContainsString('Password is required', $tester->getDisplay());
     }
 
+    public function testCreatingWithoutEmailFails(): void
+    {
+        $tester = $this->tester();
+        $tester->execute([
+            'username' => 'cmd_noemail_user',
+            'password' => 'secret123',
+        ]);
+        $this->assertSame(1, $tester->getStatusCode());
+        $this->assertStringContainsString('Email is required', $tester->getDisplay());
+
+        $user = self::getContainer()->get(UserRepository::class)->findByUsername('cmd_noemail_user');
+        $this->assertNull($user);
+    }
+
     public function testUpdatesEmailWithoutTouchingPassword(): void
     {
         $tester = $this->tester();

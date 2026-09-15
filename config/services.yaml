@@ -18,9 +18,13 @@ services:
 
     Symfony\Component\Mailer\MailerInterface:
         alias: mailer.mailer
-        public: true
 
     App\Service\InviteService:
+        arguments:
+            $mailFrom: '%app.mail_from%'
+            $mailFromName: '%app.mail_from_name%'
+
+    App\Service\PasswordResetService:
         arguments:
             $mailFrom: '%app.mail_from%'
             $mailFromName: '%app.mail_from_name%'

@@ -42,6 +42,10 @@ class BracketController extends AbstractController
         $user = $auth->requireUser();
 
         if ($request->isMethod('POST')) {
+            if (!$this->isCsrfTokenValid('app', (string) $request->request->get('_token'))) {
+                throw $this->createAccessDeniedException('Invalid CSRF token.');
+            }
+
             $name = trim($request->request->get('name', ''));
             $year = (int) $request->request->get('year', date('Y'));
 
@@ -97,6 +101,10 @@ class BracketController extends AbstractController
         $auth->requireBracketAccess($bracket);
 
         if ($request->isMethod('POST')) {
+            if (!$this->isCsrfTokenValid('app', (string) $request->request->get('_token'))) {
+                throw $this->createAccessDeniedException('Invalid CSRF token.');
+            }
+
             $name = trim($request->request->get('name', ''));
 
             if (!empty($name)) {
@@ -211,6 +219,10 @@ class BracketController extends AbstractController
         ScoringService $scoringService,
         SessionAuthenticator $auth,
     ): JsonResponse {
+        if (!$this->isCsrfTokenValid('app', (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
         $user = $auth->requireBracketAccess($bracket);
         $currentPlayer = $bracket->getPlayerNumber($user);
 
@@ -251,6 +263,10 @@ class BracketController extends AbstractController
         GameRepository $gameRepository,
         SessionAuthenticator $auth,
     ): JsonResponse {
+        if (!$this->isCsrfTokenValid('app', (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
         $user = $auth->requireBracketAccess($bracket);
         $currentPlayer = $bracket->getPlayerNumber($user);
 

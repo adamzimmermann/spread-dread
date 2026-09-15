@@ -31,21 +31,26 @@ class SecurityController extends AbstractController
         $error = null;
 
         if ($request->isMethod('POST')) {
-            $username = trim($request->request->get('username', ''));
-            $password = $request->request->get('password', '');
+            if (!$this->isCsrfTokenValid('app', (string) $request->request->get('_token'))) {
+                // A stale login tab should show the normal error, not a 403 page.
+                $error = 'Invalid username or password.';
+            } else {
+                $username = trim($request->request->get('username', ''));
+                $password = $request->request->get('password', '');
 
-            $user = $userRepository->findByUsername($username);
+                $user = $userRepository->findByUsername($username);
 
-            if ($user && $user->isActive() && password_verify($password, $user->getPassword())) {
-                $auth->login($user);
-                $user->setLastLoginAt(new \DateTimeImmutable());
-                $em->flush();
-                return $this->redirectToRoute('app_bracket_index');
+                if ($user && $user->isActive() && password_verify($password, $user->getPassword())) {
+                    $auth->login($user);
+                    $user->setLastLoginAt(new \DateTimeImmutable());
+                    $em->flush();
+                    return $this->redirectToRoute('app_bracket_index');
+                }
+
+                // Deliberately identical message for bad credentials and disabled
+                // accounts — don't disclose which accounts exist or are disabled.
+                $error = 'Invalid username or password.';
             }
-
-            // Deliberately identical message for bad credentials and disabled
-            // accounts — don't disclose which accounts exist or are disabled.
-            $error = 'Invalid username or password.';
         }
 
         return $this->render('security/login.html.twig', [

@@ -2,6 +2,21 @@ import './styles/app.css';
 
 // Spread Dread Bracket - AJAX interactions
 
+// CSRF token, published by base.html.twig, attached to every state-changing fetch.
+function csrfToken() {
+    var meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
+}
+
+function postForm(url, fields) {
+    var formData = new FormData();
+    Object.keys(fields || {}).forEach(function(key) {
+        formData.append(key, fields[key]);
+    });
+    formData.append('_token', csrfToken());
+    return fetch(url, { method: 'POST', body: formData });
+}
+
 // --- Region tabs ---
 
 var scrollingToRegion = null;
@@ -135,13 +150,7 @@ function assignPick(gameId, teamId) {
     var card = document.getElementById('game-card-' + gameId);
     card.classList.add('game-card-updating');
 
-    var formData = new FormData();
-    formData.append('team_id', teamId);
-
-    fetch('/api/games/' + gameId + '/pick', {
-        method: 'POST',
-        body: formData,
-    })
+    postForm('/api/games/' + gameId + '/pick', { team_id: teamId })
     .then(function(response) {
         if (!response.ok) throw new Error('Failed to save pick');
         return response.json();
@@ -171,14 +180,7 @@ function setSpread(gameId) {
     var card = document.getElementById('game-card-' + gameId);
     card.classList.add('game-card-updating');
 
-    var formData = new FormData();
-    formData.append('spread', spreadVal);
-    formData.append('spread_team_id', spreadTeamId);
-
-    fetch('/api/games/' + gameId + '/spread', {
-        method: 'POST',
-        body: formData,
-    })
+    postForm('/api/games/' + gameId + '/spread', { spread: spreadVal, spread_team_id: spreadTeamId })
     .then(function(response) {
         if (!response.ok) throw new Error('Failed to save spread');
         return response.json();
@@ -208,13 +210,7 @@ function pullSpreads(bracketId, round) {
     btn.classList.add('loading');
     btn.textContent = 'Pulling...';
 
-    var formData = new FormData();
-    formData.append('round', round);
-
-    fetch('/api/brackets/' + bracketId + '/pull-spreads', {
-        method: 'POST',
-        body: formData,
-    })
+    postForm('/api/brackets/' + bracketId + '/pull-spreads', { round: round })
     .then(function(response) { return response.json(); })
     .then(function(data) {
         if (data.error) {
@@ -243,9 +239,7 @@ function pullTeams(bracketId) {
     var errorEl = document.getElementById('api-error');
     errorEl.classList.add('hidden');
 
-    fetch('/api/brackets/' + bracketId + '/pull-teams', {
-        method: 'POST',
-    })
+    postForm('/api/brackets/' + bracketId + '/pull-teams', {})
     .then(function(response) { return response.json(); })
     .then(function(data) {
         if (data.error) {
@@ -307,13 +301,7 @@ function updateScores(bracketId, round) {
     btn.classList.add('loading');
     btn.textContent = 'Updating...';
 
-    var formData = new FormData();
-    formData.append('round', round);
-
-    fetch('/api/brackets/' + bracketId + '/update-scores', {
-        method: 'POST',
-        body: formData,
-    })
+    postForm('/api/brackets/' + bracketId + '/update-scores', { round: round })
     .then(function(response) { return response.json(); })
     .then(function(data) {
         if (data.error) {

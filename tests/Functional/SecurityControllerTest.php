@@ -25,6 +25,7 @@ class SecurityControllerTest extends WebTestCase
         $this->client->request('POST', '/login', [
             'username' => 'test_login_user',
             'password' => 'secret123',
+            '_token' => $this->csrfToken('/login'),
         ]);
         $this->assertResponseRedirects('/brackets');
     }

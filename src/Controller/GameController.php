@@ -27,6 +27,10 @@ class GameController extends AbstractController
         ScoringService $scoringService,
         SessionAuthenticator $auth,
     ): Response {
+        if (!$this->isCsrfTokenValid('app', (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
         $bracket = $game->getBracket();
         $user = $auth->requireBracketAccess($bracket);
         $player = $bracket->getPlayerNumber($user);
@@ -153,6 +157,10 @@ class GameController extends AbstractController
         ScoringService $scoringService,
         SessionAuthenticator $auth,
     ): JsonResponse {
+        if (!$this->isCsrfTokenValid('app', (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
         $bracket = $game->getBracket();
         $user = $auth->requireBracketAccess($bracket);
         $currentPlayer = $bracket->getPlayerNumber($user);

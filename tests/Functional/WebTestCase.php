@@ -41,19 +41,37 @@ abstract class WebTestCase extends BaseWebTestCase
     }
 
     /**
-     * Login by POSTing to /login and following the redirect.
-     * After this call, the client has an authenticated session.
+     * Login by submitting the real login form (so a CSRF token is carried)
+     * and following the redirect. After this call, the client has an
+     * authenticated session.
      */
     protected function loginViaForm(string $username = 'testuser', string $password = 'password'): void
     {
-        $this->client->request('POST', '/login', [
+        $crawler = $this->client->request('GET', '/login');
+        $form = $crawler->selectButton('Login')->form([
             'username' => $username,
             'password' => $password,
         ]);
-        // Follow the redirect to /brackets so the session cookie is set
+        $this->client->submit($form);
         if ($this->client->getResponse()->isRedirection()) {
             $this->client->followRedirect();
         }
+    }
+
+    /**
+     * A valid 'app' CSRF token for the client's current session, for tests
+     * that POST directly to an API endpoint rather than through a rendered
+     * form (which already carries one). Reads the token off the meta tag of
+     * a real page rather than pulling it from the token manager service
+     * directly, since the manager's session-backed storage needs an active
+     * HTTP request to bind to. Pass $path for a page reachable without
+     * disturbing the test's authentication state (e.g. '/login' before
+     * logging in).
+     */
+    protected function csrfToken(string $path = '/brackets'): string
+    {
+        $crawler = $this->client->request('GET', $path);
+        return $crawler->filter('meta[name="csrf-token"]')->attr('content');
     }
 
     protected function createBracket(User $player1, User $player2, int $firstPicker = 1): Bracket

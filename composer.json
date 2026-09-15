@@ -19,6 +19,7 @@
         "symfony/monolog-bundle": "^4.0",
         "symfony/runtime": "^7.2",
         "symfony/security-bundle": "^7.2",
+        "symfony/security-csrf": "^7.2",
         "symfony/twig-bundle": "^7.2",
         "symfony/yaml": "^7.2",
         "symfonycasts/tailwind-bundle": "^0.12.0",

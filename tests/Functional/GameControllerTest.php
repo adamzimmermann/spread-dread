@@ -20,6 +20,7 @@ class GameControllerTest extends WebTestCase
         $this->loginViaForm('gc_p1');
         $this->client->request('POST', "/api/games/{$game->getId()}/pick", [
             'team_id' => $duke->getId(),
+            '_token' => $this->csrfToken(),
         ]);
 
         $this->assertResponseIsSuccessful();
@@ -56,6 +57,7 @@ class GameControllerTest extends WebTestCase
         $this->loginViaForm('gc_turn_p2');
         $this->client->request('POST', "/api/games/{$game->getId()}/pick", [
             'team_id' => $duke->getId(),
+            '_token' => $this->csrfToken(),
         ]);
 
         $this->assertResponseStatusCodeSame(403);
@@ -97,6 +99,7 @@ class GameControllerTest extends WebTestCase
         $this->loginViaForm('gc_invalid_p1');
         $this->client->request('POST', "/api/games/{$game->getId()}/pick", [
             'team_id' => $michigan->getId(),
+            '_token' => $this->csrfToken(),
         ]);
 
         $this->assertResponseStatusCodeSame(400);
@@ -122,6 +125,7 @@ class GameControllerTest extends WebTestCase
         $this->loginViaForm('gc_reeval_p1');
         $this->client->request('POST', "/api/games/{$game->getId()}/pick", [
             'team_id' => $duke->getId(),
+            '_token' => $this->csrfToken(),
         ]);
 
         $this->assertResponseIsSuccessful();
@@ -148,6 +152,7 @@ class GameControllerTest extends WebTestCase
         $this->client->request('POST', "/api/games/{$game->getId()}/spread", [
             'spread' => '5.5',
             'spread_team_id' => $duke->getId(),
+            '_token' => $this->csrfToken(),
         ]);
 
         $this->assertResponseIsSuccessful();
@@ -195,6 +200,7 @@ class GameControllerTest extends WebTestCase
         $this->client->request('POST', "/api/games/{$game->getId()}/spread", [
             'spread' => '18.5',
             'spread_team_id' => $duke->getId(),
+            '_token' => $this->csrfToken(),
         ]);
 
         $this->assertResponseIsSuccessful();

@@ -3,5 +3,10 @@ framework:
         dsn: '%env(MAILER_DSN)%'
 
 parameters:
+    # Defaults so an unset MAILER_DSN/MAILER_FROM in production degrades to
+    # discarded mail (null transport) rather than a container-compile-time
+    # EnvNotFoundException that 500s every page on the site.
+    env(MAILER_DSN): 'null://null'
+    env(MAILER_FROM): 'no-reply@localhost'
     app.mail_from: '%env(MAILER_FROM)%'
     app.mail_from_name: 'Spread Dread'

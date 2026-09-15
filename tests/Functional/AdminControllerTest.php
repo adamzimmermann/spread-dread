@@ -128,6 +128,44 @@ class AdminControllerTest extends WebTestCase
         $this->assertSame(UserStatus::Active, $refetched->getStatus());
     }
 
+    public function testAdminCannotRevokeTheirOwnAdmin(): void
+    {
+        $admin = $this->createUser('adm_self_revoke_admin', 'password', null, true);
+        $adminId = $admin->getId();
+        $this->loginViaForm('adm_self_revoke_admin');
+
+        $this->client->request('POST', "/admin/users/{$adminId}/admin", [
+            '_token' => $this->csrfToken(),
+            'is_admin' => '0',
+        ]);
+        $this->client->followRedirect();
+
+        $refetched = $this->em->find(User::class, $adminId);
+        $this->assertTrue($refetched->isAdmin());
+    }
+
+    public function testDashboardRendersUserWithMissingEmail(): void
+    {
+        $this->createUser('adm_nullemail_admin', 'password', null, true);
+
+        // Bypass WebTestCase::createUser()'s @example.com fallback: production
+        // has real accounts with a genuinely null email until the Task 12
+        // backfill runs, and the dashboard must survive rendering them.
+        $noEmailUser = new User();
+        $noEmailUser->setUsername('adm_no_email_user');
+        $noEmailUser->setPassword(password_hash('password', PASSWORD_BCRYPT));
+        $noEmailUser->setEmail(null);
+        $this->em->persist($noEmailUser);
+        $this->em->flush();
+
+        $this->loginViaForm('adm_nullemail_admin');
+
+        $this->client->request('GET', '/admin');
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextContains('body', 'adm_no_email_user');
+        $this->assertSelectorTextContains('body', '(missing)');
+    }
+
     public function testRevokingAnInvite(): void
     {
         $admin = $this->createUser('adm_revoke_admin', 'password', null, true);

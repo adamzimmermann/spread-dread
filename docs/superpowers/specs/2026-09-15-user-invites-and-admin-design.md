@@ -1,7 +1,7 @@
 # Invite-Based Registration, Admin Dashboard, and Opponent Selection
 
 **Date:** 2026-09-15
-**Status:** Approved, pending implementation plan
+**Status:** Approved; production email map confirmed 2026-09-15 (held outside the repo)
 
 ## Problem
 
@@ -41,6 +41,13 @@ status. Consequences:
 - Asynchronous mail. Dreamhost shared hosting has no queue worker; sends are
   synchronous.
 
+## Constraint: the repository is public
+
+`adamzimmermann/spread-dread` is public. No real email address, credential, or
+other personal datum may appear in a tracked file — migrations, fixtures, tests,
+and specs included. Test fixtures use `@example.com` addresses. This constraint
+shapes the migration strategy below.
+
 ## Decisions
 
 | Decision | Choice | Rationale |
@@ -59,7 +66,7 @@ status. Consequences:
 
 | Field | Type | Notes |
 |---|---|---|
-| `email` | `string(180)` | unique, NOT NULL |
+| `email` | `string(180)` | unique, NOT NULL, stored lowercased |
 | `isAdmin` | `bool` | default `false` |
 | `status` | `string(16)` | `active` \| `disabled`, default `active` |
 | `createdAt` | `datetime_immutable` | |
@@ -68,6 +75,11 @@ status. Consequences:
 
 `status` is a string column backed by a PHP enum. Disabling blocks login and
 removes the user from opponent autocomplete, but leaves brackets and picks intact.
+
+`email` is normalised to lowercase on write and on lookup. A `UNIQUE` column is
+case-sensitive where mail providers are not, so without normalising,
+`Player.One@example.com` and `player.one@example.com` would be two accounts and
+a reset request could silently miss the real one.
 
 ### `Invite` (new)
 
@@ -246,17 +258,47 @@ means a lost invite.
 
 ## Migration
 
-One migration file, three steps:
+`adamzimmermann/spread-dread` is a **public** GitHub repository, and
+`.github/workflows/deploy.yml` runs `doctrine:migrations:migrate` automatically on
+every push to `main`. Migration files are therefore tracked and published, so the
+existing users' email addresses — four of which belong to other people — must not
+appear in one. The backfill is split across two deploys instead.
 
-1. Add `email` as nullable.
-2. `UPDATE` each existing account with its address, from a username-to-email map
-   supplied by the admin. This map is an **input to implementation**, gathered
-   from the production database (not local — the two may differ).
-3. Count remaining NULLs. If any, throw with the offending usernames named, so an
-   unknown production account halts the deploy with a clear message rather than
-   an opaque constraint violation. Otherwise `ALTER` to `NOT NULL UNIQUE`.
+**Phase 1** (migration A, first deploy)
 
-New tables and remaining columns generated with `doctrine:migrations:diff`.
+1. Add `email` as nullable, plus `is_admin`, `status`, `created_at`,
+   `last_login_at`, `invited_by_id`.
+2. Set `status = 'active'` and a `created_at` for all existing rows.
+3. Create the `invite` and `password_reset_token` tables.
+
+**Phase 2** (manual, between deploys)
+
+Run on production, once:
+
+```
+php bin/console app:user <username> --email=<address>
+```
+
+for each existing account, and `--admin` for the administrator. `app:user` is
+extended to accept `--email` and `--admin` and to update an existing account
+without requiring a password argument.
+
+**Phase 3** (migration B, second deploy)
+
+1. Count rows with a NULL `email`. If any, throw naming the offending usernames,
+   so an unfilled account halts the deploy with a clear message rather than an
+   opaque constraint violation.
+2. `ALTER` `email` to `NOT NULL UNIQUE`.
+
+Migration B is written in the same branch as A but must not be pushed until the
+phase 2 backfill has run, or the deploy will halt at step 1. This is the intended
+behaviour — halting is strictly better than inventing addresses — but it means
+the two pushes are ordered, not simultaneous.
+
+The username-to-email map itself is held outside the repository and supplied to
+whoever runs phase 2.
+
+Remaining tables and columns generated with `doctrine:migrations:diff`.
 
 ## Testing
 

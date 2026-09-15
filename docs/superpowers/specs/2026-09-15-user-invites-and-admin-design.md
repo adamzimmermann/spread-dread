@@ -195,8 +195,13 @@ One page, two tables.
 **Users:** username, email, status, admin flag, created, last login, bracket
 count, invited by. Inline enable/disable and grant/revoke admin.
 
-**Invites:** email, status, sent, expires, invited by. Inline resend and revoke,
-plus a copyable invite URL.
+**Invites:** email, status, sent, expires, invited by. Inline resend and revoke.
+
+The invite URL cannot be listed in this table: only the token's hash is stored, so
+the link is unrecoverable after the request that created it. When sending fails,
+the link is surfaced once in the resulting flash message, labelled as
+un-repeatable. Recovering from a missed one means resending, which issues a fresh
+token.
 
 Sorted by last login descending. No pagination — the expected scale is dozens.
 
@@ -236,8 +241,9 @@ committed. `.env.example` documents both.
 
 Sends are synchronous. `InviteService` catches `TransportException` and surfaces
 the failure in the dashboard. The invite row is still created when sending fails,
-and the dashboard exposes a copyable link — so a broken SMTP configuration never
-means a lost invite.
+and the failing request surfaces the link once so it can be delivered by hand — so
+a broken SMTP configuration never means a lost invite, though it does mean acting
+on the spot or resending later.
 
 ## Security
 

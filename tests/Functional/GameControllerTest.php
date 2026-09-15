@@ -77,10 +77,12 @@ class GameControllerTest extends WebTestCase
         $game = $this->createGame($bracket, $duke, $norfolk);
 
         $this->loginViaForm('gc_nonp_outsider');
+        $token = $this->csrfToken();
         $this->client->catchExceptions(false);
         $this->expectException(\Symfony\Component\Security\Core\Exception\AccessDeniedException::class);
         $this->client->request('POST', "/api/games/{$game->getId()}/pick", [
             'team_id' => $duke->getId(),
+            '_token' => $token,
         ]);
     }
 
@@ -219,8 +221,11 @@ class GameControllerTest extends WebTestCase
 
     public function testUnauthenticatedApiRejects(): void
     {
+        // Not logged in — fetch a token from a page a guest can reach so the
+        // request clears CSRF and actually exercises the auth check.
+        $token = $this->csrfToken('/login');
         $this->client->catchExceptions(false);
         $this->expectException(\Symfony\Component\Security\Core\Exception\AccessDeniedException::class);
-        $this->client->request('POST', '/api/games/1/pick', ['team_id' => 1]);
+        $this->client->request('POST', '/api/games/1/pick', ['team_id' => 1, '_token' => $token]);
     }
 }

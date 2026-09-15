@@ -42,9 +42,10 @@ class BracketAuthorizationTest extends WebTestCase
 
         $id = $bracket->getId();
         foreach (["/api/brackets/$id/pull-spreads", "/api/brackets/$id/update-scores"] as $url) {
+            $token = $this->csrfToken();
             $this->client->catchExceptions(false);
             try {
-                $this->client->request('POST', $url, ['round' => 1]);
+                $this->client->request('POST', $url, ['round' => 1, '_token' => $token]);
                 $this->fail("Expected AccessDeniedException for $url");
             } catch (AccessDeniedException) {
                 $this->addToAssertionCount(1);

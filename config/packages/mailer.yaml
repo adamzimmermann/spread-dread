@@ -1,0 +1,7 @@
+framework:
+    mailer:
+        dsn: '%env(MAILER_DSN)%'
+
+parameters:
+    app.mail_from: '%env(MAILER_FROM)%'
+    app.mail_from_name: 'Spread Dread'

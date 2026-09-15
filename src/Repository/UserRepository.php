@@ -41,4 +41,14 @@ class UserRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    /** @return User[] */
+    public function findAllForAdmin(): array
+    {
+        return $this->createQueryBuilder('u')
+            ->orderBy('u.lastLoginAt', 'DESC')
+            ->addOrderBy('u.username', 'ASC')
+            ->getQuery()
+            ->getResult();
+    }
 }

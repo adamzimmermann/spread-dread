@@ -92,4 +92,62 @@ class UserCommandTest extends KernelTestCase
         $this->assertTrue($user->isAdmin());
         $this->assertSame($originalHash, $user->getPassword());
     }
+
+    public function testUpdatingWithoutEmailOptionLeavesEmailUnchanged(): void
+    {
+        $tester = $this->tester();
+        $tester->execute([
+            'username' => 'cmd_update_noemail_user',
+            'password' => 'secret123',
+            '--email' => 'keep@example.com',
+        ]);
+
+        $tester = $this->tester();
+        $tester->execute([
+            'username' => 'cmd_update_noemail_user',
+            'password' => 'newsecret456',
+        ]);
+        $tester->assertCommandIsSuccessful();
+
+        self::getContainer()->get('doctrine')->getManager()->clear();
+        $user = self::getContainer()->get(UserRepository::class)->findByUsername('cmd_update_noemail_user');
+        $this->assertSame('keep@example.com', $user->getEmail());
+    }
+
+    public function testCreatingWithBlankEmailFails(): void
+    {
+        $tester = $this->tester();
+        $tester->execute([
+            'username' => 'cmd_blank_create_user',
+            'password' => 'secret123',
+            '--email' => '   ',
+        ]);
+        $this->assertSame(1, $tester->getStatusCode());
+        $this->assertStringContainsString('Email cannot be blank', $tester->getDisplay());
+
+        $user = self::getContainer()->get(UserRepository::class)->findByUsername('cmd_blank_create_user');
+        $this->assertNull($user);
+    }
+
+    public function testUpdatingWithBlankEmailFails(): void
+    {
+        $tester = $this->tester();
+        $tester->execute([
+            'username' => 'cmd_blank_update_user',
+            'password' => 'secret123',
+            '--email' => 'has.email@example.com',
+        ]);
+
+        $tester = $this->tester();
+        $tester->execute([
+            'username' => 'cmd_blank_update_user',
+            '--email' => '',
+        ]);
+        $this->assertSame(1, $tester->getStatusCode());
+        $this->assertStringContainsString('Email cannot be blank', $tester->getDisplay());
+
+        self::getContainer()->get('doctrine')->getManager()->clear();
+        $user = self::getContainer()->get(UserRepository::class)->findByUsername('cmd_blank_update_user');
+        $this->assertSame('has.email@example.com', $user->getEmail());
+    }
 }

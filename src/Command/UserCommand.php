@@ -43,6 +43,11 @@ class UserCommand extends Command
         $password = $input->getArgument('password');
         $email = $input->getOption('email');
 
+        if ($email !== null && trim($email) === '') {
+            $io->error('Email cannot be blank.');
+            return Command::FAILURE;
+        }
+
         $user = $this->userRepository->findByUsername($username);
         $isNew = $user === null;
 

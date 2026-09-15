@@ -21,7 +21,6 @@ services:
         public: true
 
     App\Service\InviteService:
-        public: true
         arguments:
             $mailFrom: '%app.mail_from%'
             $mailFromName: '%app.mail_from_name%'

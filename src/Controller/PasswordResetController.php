@@ -45,7 +45,7 @@ class PasswordResetController extends AbstractController
         $record = $service->findValid($token);
 
         if (!$record) {
-            return $this->render('invite/invalid.html.twig');
+            return $this->render('password_reset/invalid.html.twig');
         }
 
         $error = null;

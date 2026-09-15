@@ -122,7 +122,11 @@ class BracketController extends AbstractController
             $opponentUsername = trim($request->request->get('opponent_username', ''));
             if ($opponentUsername !== '') {
                 $opponent = $userRepository->findByUsername($opponentUsername);
-                if ($opponent && $opponent->isActive() && $opponent->getId() !== $bracket->getPlayer1()?->getId()) {
+                if ($opponent
+                    && $opponent->isActive()
+                    && $opponent->getId() !== $bracket->getPlayer1()?->getId()
+                    && $opponent->getId() !== $user->getId()
+                ) {
                     $bracket->setPlayer2($opponent);
                 } else {
                     $this->addFlash('error', 'Pick an opponent from the list.');

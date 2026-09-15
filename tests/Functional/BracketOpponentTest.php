@@ -14,13 +14,18 @@ class BracketOpponentTest extends WebTestCase
         $this->createUser('opp_list_disabled', 'password', null, false, UserStatus::Disabled);
         $this->loginViaForm('opp_list_me');
 
-        $this->client->request('GET', '/brackets/create');
+        $crawler = $this->client->request('GET', '/brackets/create');
         $this->assertResponseIsSuccessful();
         $this->assertSelectorExists('datalist#opponents');
 
-        $html = $this->client->getResponse()->getContent();
-        $this->assertStringContainsString('opp_list_other', $html);
-        $this->assertStringNotContainsString('opp_list_disabled', $html);
+        // Scope to the datalist itself: the page separately renders
+        // "{{ currentUser.username }} (you)" elsewhere, so a page-wide
+        // string search would pass even if the viewer leaked into the
+        // opponent list.
+        $datalistHtml = $crawler->filter('datalist#opponents')->html();
+        $this->assertStringContainsString('opp_list_other', $datalistHtml);
+        $this->assertStringNotContainsString('opp_list_me', $datalistHtml);
+        $this->assertStringNotContainsString('opp_list_disabled', $datalistHtml);
     }
 
     public function testCreatingABracketMakesYouPlayerOne(): void
@@ -93,5 +98,72 @@ class BracketOpponentTest extends WebTestCase
         $this->client->submit($form);
 
         $this->assertSelectorTextContains('body', 'Pick an opponent from the list');
+    }
+
+    public function testEditingOpponentAsPlayerSucceeds(): void
+    {
+        $player1 = $this->createUser('opp_edit_p1');
+        $oldOpponent = $this->createUser('opp_edit_p2_old');
+        $newOpponent = $this->createUser('opp_edit_p2_new');
+        $bracket = $this->createBracket($player1, $oldOpponent);
+        $bracketId = $bracket->getId();
+        $newOpponentId = $newOpponent->getId();
+
+        $this->loginViaForm('opp_edit_p1');
+
+        $crawler = $this->client->request('GET', "/brackets/{$bracketId}/edit");
+        $form = $crawler->selectButton('Save Changes')->form([
+            'opponent_username' => 'opp_edit_p2_new',
+        ]);
+        $this->client->submit($form);
+
+        $refetched = static::getContainer()->get(BracketRepository::class)->find($bracketId);
+        $this->assertSame($newOpponentId, $refetched->getPlayer2()->getId());
+    }
+
+    public function testAdminCannotSetSelfAsOpponentOnEdit(): void
+    {
+        $player1 = $this->createUser('opp_edit_adm_p1');
+        $player2 = $this->createUser('opp_edit_adm_p2');
+        $this->createUser('opp_edit_admin', 'password', null, true);
+        $bracket = $this->createBracket($player1, $player2);
+        $bracketId = $bracket->getId();
+        $originalPlayer2Id = $player2->getId();
+
+        $this->loginViaForm('opp_edit_admin');
+
+        $crawler = $this->client->request('GET', "/brackets/{$bracketId}/edit");
+        $form = $crawler->selectButton('Save Changes')->form([
+            'opponent_username' => 'opp_edit_admin',
+        ]);
+        $this->client->submit($form);
+
+        $this->assertSelectorTextContains('body', 'Pick an opponent from the list');
+
+        $refetched = static::getContainer()->get(BracketRepository::class)->find($bracketId);
+        $this->assertSame($originalPlayer2Id, $refetched->getPlayer2()->getId());
+    }
+
+    public function testRejectedEditLeavesPlayerTwoUnchanged(): void
+    {
+        $player1 = $this->createUser('opp_edit_rej_p1');
+        $player2 = $this->createUser('opp_edit_rej_p2');
+        $this->createUser('opp_edit_rej_disabled', 'password', null, false, UserStatus::Disabled);
+        $bracket = $this->createBracket($player1, $player2);
+        $bracketId = $bracket->getId();
+        $originalPlayer2Id = $player2->getId();
+
+        $this->loginViaForm('opp_edit_rej_p1');
+
+        $crawler = $this->client->request('GET', "/brackets/{$bracketId}/edit");
+        $form = $crawler->selectButton('Save Changes')->form([
+            'opponent_username' => 'opp_edit_rej_disabled',
+        ]);
+        $this->client->submit($form);
+
+        $this->assertSelectorTextContains('body', 'Pick an opponent from the list');
+
+        $refetched = static::getContainer()->get(BracketRepository::class)->find($bracketId);
+        $this->assertSame($originalPlayer2Id, $refetched->getPlayer2()->getId());
     }
 }

@@ -9,6 +9,7 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -29,7 +30,10 @@ class UserCommand extends Command
     {
         $this
             ->addArgument('username', InputArgument::REQUIRED, 'The username')
-            ->addArgument('password', InputArgument::REQUIRED, 'The password');
+            ->addArgument('password', InputArgument::OPTIONAL, 'The password (required when creating)')
+            ->addOption('email', null, InputOption::VALUE_REQUIRED, 'Email address')
+            ->addOption('admin', null, InputOption::VALUE_NONE, 'Grant administrator access')
+            ->addOption('no-admin', null, InputOption::VALUE_NONE, 'Revoke administrator access');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -37,21 +41,44 @@ class UserCommand extends Command
         $io = new SymfonyStyle($input, $output);
         $username = $input->getArgument('username');
         $password = $input->getArgument('password');
+        $email = $input->getOption('email');
 
         $user = $this->userRepository->findByUsername($username);
+        $isNew = $user === null;
 
-        if ($user) {
-            $user->setPassword(password_hash($password, PASSWORD_BCRYPT));
-            $io->success(sprintf('Updated password for user "%s".', $username));
-        } else {
+        if ($isNew) {
+            if (!$password) {
+                $io->error('Password is required when creating a new user.');
+                return Command::FAILURE;
+            }
             $user = new User();
             $user->setUsername($username);
-            $user->setPassword(password_hash($password, PASSWORD_BCRYPT));
             $this->em->persist($user);
-            $io->success(sprintf('Created user "%s".', $username));
+        }
+
+        if ($password) {
+            $user->setPassword(password_hash($password, PASSWORD_BCRYPT));
+        }
+
+        if ($email !== null) {
+            $existing = $this->userRepository->findByEmail($email);
+            if ($existing && $existing->getId() !== $user->getId()) {
+                $io->error(sprintf('That email address already belongs to "%s".', $existing->getUsername()));
+                return Command::FAILURE;
+            }
+            $user->setEmail($email);
+        }
+
+        if ($input->getOption('admin')) {
+            $user->setIsAdmin(true);
+        }
+        if ($input->getOption('no-admin')) {
+            $user->setIsAdmin(false);
         }
 
         $this->em->flush();
+
+        $io->success(sprintf('%s user "%s".', $isNew ? 'Created' : 'Updated', $username));
 
         return Command::SUCCESS;
     }

@@ -3,10 +3,10 @@
 namespace App\Controller;
 
 use App\Entity\Bracket;
-use App\Entity\User;
 use App\Repository\BracketRepository;
 use App\Repository\GameRepository;
 use App\Repository\UserRepository;
+use App\Security\SessionAuthenticator;
 use App\Service\BracketBuilderService;
 use App\Service\EspnApiService;
 use App\Service\ScoringService;
@@ -20,9 +20,9 @@ use Symfony\Component\Routing\Attribute\Route;
 class BracketController extends AbstractController
 {
     #[Route('/brackets', name: 'app_bracket_index')]
-    public function index(Request $request, BracketRepository $bracketRepository, UserRepository $userRepository): Response
+    public function index(BracketRepository $bracketRepository, SessionAuthenticator $auth): Response
     {
-        $user = $this->requireUser($request, $userRepository);
+        $user = $auth->requireUser();
         $brackets = $bracketRepository->findByUser($user);
 
         return $this->render('bracket/index.html.twig', [
@@ -37,17 +37,37 @@ class BracketController extends AbstractController
         BracketBuilderService $bracketBuilder,
         EspnApiService $espnApiService,
         UserRepository $userRepository,
+        SessionAuthenticator $auth,
     ): Response {
-        $user = $this->requireUser($request, $userRepository);
+        $user = $auth->requireUser();
+        $opponents = $userRepository->findActiveOpponents($user);
 
         if ($request->isMethod('POST')) {
+            if (!$this->isCsrfTokenValid('app', (string) $request->request->get('_token'))) {
+                throw $this->createAccessDeniedException('Invalid CSRF token.');
+            }
+
             $name = trim($request->request->get('name', ''));
             $year = (int) $request->request->get('year', date('Y'));
+            $opponentUsername = trim($request->request->get('opponent_username', ''));
 
-            if (empty($name)) {
-                $this->addFlash('error', 'Bracket name is required.');
+            $opponent = $opponentUsername === '' ? null : $userRepository->findByUsername($opponentUsername);
+            $opponentIsValid = $opponent
+                && $opponent->isActive()
+                && $opponent->getId() !== $user->getId();
+
+            $error = null;
+            if ($name === '') {
+                $error = 'Bracket name is required.';
+            } elseif (!$opponentIsValid) {
+                $error = 'Pick an opponent from the list.';
+            }
+
+            if ($error !== null) {
+                $this->addFlash('error', $error);
                 return $this->render('bracket/create.html.twig', [
-                    'users' => $userRepository->findAll(),
+                    'opponents' => $opponents,
+                    'currentUser' => $user,
                 ]);
             }
 
@@ -55,18 +75,10 @@ class BracketController extends AbstractController
             $bracket->setName($name);
             $bracket->setYear($year);
             $bracket->setFirstPicker(random_int(1, 2));
-
-            $player1Id = $request->request->get('player1_id');
-            $player2Id = $request->request->get('player2_id');
-            if ($player1Id) {
-                $bracket->setPlayer1($userRepository->find((int) $player1Id));
-            }
-            if ($player2Id) {
-                $bracket->setPlayer2($userRepository->find((int) $player2Id));
-            }
+            $bracket->setPlayer1($user);
+            $bracket->setPlayer2($opponent);
 
             $em->persist($bracket);
-
             $bracketBuilder->buildBracket($bracket);
 
             // Auto-populate teams from ESPN
@@ -81,7 +93,8 @@ class BracketController extends AbstractController
         }
 
         return $this->render('bracket/create.html.twig', [
-            'users' => $userRepository->findAll(),
+            'opponents' => $opponents,
+            'currentUser' => $user,
         ]);
     }
 
@@ -91,30 +104,55 @@ class BracketController extends AbstractController
         Bracket $bracket,
         EntityManagerInterface $em,
         UserRepository $userRepository,
+        SessionAuthenticator $auth,
     ): Response {
-        $user = $this->requireUser($request, $userRepository);
+        $user = $auth->requireBracketAccess($bracket);
+        $opponents = $userRepository->findActiveOpponents($user);
 
         if ($request->isMethod('POST')) {
-            $name = trim($request->request->get('name', ''));
+            if (!$this->isCsrfTokenValid('app', (string) $request->request->get('_token'))) {
+                throw $this->createAccessDeniedException('Invalid CSRF token.');
+            }
 
-            if (!empty($name)) {
+            $name = trim($request->request->get('name', ''));
+            if ($name !== '') {
                 $bracket->setName($name);
             }
 
-            $player1Id = $request->request->get('player1_id');
-            $player2Id = $request->request->get('player2_id');
-            $bracket->setPlayer1($player1Id ? $userRepository->find((int) $player1Id) : null);
-            $bracket->setPlayer2($player2Id ? $userRepository->find((int) $player2Id) : null);
+            $opponentUsername = trim($request->request->get('opponent_username', ''));
+            if ($opponentUsername !== '') {
+                $opponent = $userRepository->findByUsername($opponentUsername);
+
+                // A participant re-submitting their own name (e.g. player 2
+                // saving the form without touching the pre-filled opponent
+                // field) is a no-op, not an attempt to insert themselves.
+                // Only an outsider (typically an admin editing someone
+                // else's bracket) is barred from naming themselves opponent.
+                $actingUserIsParticipant = $bracket->hasPlayer($user);
+                $opponentIsValid = $opponent
+                    && $opponent->isActive()
+                    && $opponent->getId() !== $bracket->getPlayer1()?->getId()
+                    && ($actingUserIsParticipant || $opponent->getId() !== $user->getId());
+
+                if ($opponentIsValid) {
+                    $bracket->setPlayer2($opponent);
+                } else {
+                    $this->addFlash('error', 'Pick an opponent from the list.');
+                    return $this->render('bracket/edit.html.twig', [
+                        'bracket' => $bracket,
+                        'opponents' => $opponents,
+                    ]);
+                }
+            }
 
             $em->flush();
-
             $this->addFlash('success', 'Bracket updated.');
             return $this->redirectToRoute('app_bracket_show', ['id' => $bracket->getId()]);
         }
 
         return $this->render('bracket/edit.html.twig', [
             'bracket' => $bracket,
-            'users' => $userRepository->findAll(),
+            'opponents' => $opponents,
         ]);
     }
 
@@ -124,9 +162,9 @@ class BracketController extends AbstractController
         Bracket $bracket,
         GameRepository $gameRepository,
         ScoringService $scoringService,
-        UserRepository $userRepository,
+        SessionAuthenticator $auth,
     ): Response {
-        $user = $this->requireUser($request, $userRepository);
+        $user = $auth->requireBracketAccess($bracket);
         $currentPlayer = $bracket->getPlayerNumber($user);
 
         $round = (int) $request->query->get('round', 1);
@@ -207,9 +245,13 @@ class BracketController extends AbstractController
         EspnApiService $espnApiService,
         GameRepository $gameRepository,
         ScoringService $scoringService,
-        UserRepository $userRepository,
+        SessionAuthenticator $auth,
     ): JsonResponse {
-        $user = $this->requireUser($request, $userRepository);
+        if (!$this->isCsrfTokenValid('app', (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        $user = $auth->requireBracketAccess($bracket);
         $currentPlayer = $bracket->getPlayerNumber($user);
 
         $round = (int) $request->request->get('round', 1);
@@ -247,9 +289,13 @@ class BracketController extends AbstractController
         EspnApiService $espnApiService,
         ScoringService $scoringService,
         GameRepository $gameRepository,
-        UserRepository $userRepository,
+        SessionAuthenticator $auth,
     ): JsonResponse {
-        $user = $this->requireUser($request, $userRepository);
+        if (!$this->isCsrfTokenValid('app', (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
+        $user = $auth->requireBracketAccess($bracket);
         $currentPlayer = $bracket->getPlayerNumber($user);
 
         $round = (int) $request->request->get('round', 1);
@@ -286,15 +332,5 @@ class BracketController extends AbstractController
             'cards' => $cards,
             'scores' => $scores,
         ]);
-    }
-
-    private function requireUser(Request $request, UserRepository $userRepository): User
-    {
-        $userId = $request->getSession()->get('user_id');
-        $user = $userId ? $userRepository->find($userId) : null;
-        if (!$user) {
-            throw $this->createAccessDeniedException();
-        }
-        return $user;
     }
 }

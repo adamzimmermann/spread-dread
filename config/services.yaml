@@ -15,3 +15,16 @@ services:
     App\Service\OddsApiService:
         arguments:
             $oddsApiKey: '%env(ODDS_API_KEY)%'
+
+    Symfony\Component\Mailer\MailerInterface:
+        alias: mailer.mailer
+
+    App\Service\InviteService:
+        arguments:
+            $mailFrom: '%app.mail_from%'
+            $mailFromName: '%app.mail_from_name%'
+
+    App\Service\PasswordResetService:
+        arguments:
+            $mailFrom: '%app.mail_from%'
+            $mailFromName: '%app.mail_from_name%'

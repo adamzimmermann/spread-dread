@@ -30,11 +30,29 @@ ddev exec php bin/console doctrine:migrations:migrate
 ddev launch
 ```
 
-### Create or Update Users
+`MAILER_DSN` and `MAILER_FROM` both default to a discard-mail configuration
+(`null://null`) if left unset, so the app still boots without them. To actually
+send invitation and password-reset emails, set a real `MAILER_DSN` (and, in
+production, a `MAILER_FROM` you control) in `.env.local` (not committed);
+leaving them at their defaults is fine for local development, where mail is
+silently discarded.
+
+### Accounts
+
+Accounts are created by invitation, not from the command line. An admin logs in,
+opens `/admin`, and sends an invite to an email address; the recipient follows the
+link to set a username and password.
+
+The `app:user` command still exists as a break-glass path for when there's no admin
+yet (bootstrapping the first account) or SMTP is down:
 
 ```bash
-ddev exec php bin/console app:user <username> <password>
+ddev exec php bin/console app:user <username> <password> --email=<address> [--admin]
 ```
+
+`--email` is optional while pre-existing accounts are still being backfilled, but
+set it whenever you create an account — a follow-up change makes the column
+`NOT NULL` and the option required.
 
 ## Development
 

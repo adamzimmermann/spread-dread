@@ -4,10 +4,9 @@ namespace App\Controller;
 
 use App\Entity\Game;
 use App\Entity\Pick;
-use App\Entity\User;
 use App\Repository\GameRepository;
 use App\Repository\TeamRepository;
-use App\Repository\UserRepository;
+use App\Security\SessionAuthenticator;
 use App\Service\ScoringService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -26,10 +25,14 @@ class GameController extends AbstractController
         GameRepository $gameRepository,
         TeamRepository $teamRepository,
         ScoringService $scoringService,
-        UserRepository $userRepository,
+        SessionAuthenticator $auth,
     ): Response {
-        $user = $this->requireUser($request, $userRepository);
+        if (!$this->isCsrfTokenValid('app', (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
         $bracket = $game->getBracket();
+        $user = $auth->requireBracketAccess($bracket);
         $player = $bracket->getPlayerNumber($user);
 
         if (!$player) {
@@ -152,10 +155,14 @@ class GameController extends AbstractController
         GameRepository $gameRepository,
         TeamRepository $teamRepository,
         ScoringService $scoringService,
-        UserRepository $userRepository,
+        SessionAuthenticator $auth,
     ): JsonResponse {
-        $user = $this->requireUser($request, $userRepository);
+        if (!$this->isCsrfTokenValid('app', (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+
         $bracket = $game->getBracket();
+        $user = $auth->requireBracketAccess($bracket);
         $currentPlayer = $bracket->getPlayerNumber($user);
 
         $spread = $request->request->get('spread');
@@ -214,15 +221,5 @@ class GameController extends AbstractController
             }
         }
         return null;
-    }
-
-    private function requireUser(Request $request, UserRepository $userRepository): User
-    {
-        $userId = $request->getSession()->get('user_id');
-        $user = $userId ? $userRepository->find($userId) : null;
-        if (!$user) {
-            throw $this->createAccessDeniedException();
-        }
-        return $user;
     }
 }

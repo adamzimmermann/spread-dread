@@ -35,3 +35,6 @@
 /phpunit.xml
 /.phpunit.cache/
 ###< phpunit/phpunit ###
+
+# Superpowers SDD scratch
+/.superpowers/

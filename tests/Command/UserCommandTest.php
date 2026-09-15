@@ -1,0 +1,81 @@
+<?php
+
+namespace App\Tests\Command;
+
+use App\Repository\UserRepository;
+use Symfony\Bundle\FrameworkBundle\Console\Application;
+use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Component\Console\Tester\CommandTester;
+
+class UserCommandTest extends KernelTestCase
+{
+    /**
+     * Builds a CommandTester against the currently booted kernel, booting
+     * one if none is running yet. Reusing the same boot across multiple
+     * calls within a single test method matters here: KernelTestCase's
+     * bootKernel() always shuts down and replaces any existing kernel, and
+     * dama/doctrine-test-bundle wraps each new connection in its own nested
+     * transaction — a second boot mid-test would start from a connection
+     * that doesn't see the first execute()'s writes. Booting once and
+     * reusing it keeps both CommandTester runs on the same connection.
+     */
+    private function tester(): CommandTester
+    {
+        if (!static::$booted) {
+            self::bootKernel();
+        }
+        $application = new Application(self::$kernel);
+        return new CommandTester($application->find('app:user'));
+    }
+
+    public function testCreatesUserWithEmail(): void
+    {
+        $tester = $this->tester();
+        $tester->execute([
+            'username' => 'cmd_create_user',
+            'password' => 'secret123',
+            '--email' => 'cmd.create@example.com',
+        ]);
+        $tester->assertCommandIsSuccessful();
+
+        $user = self::getContainer()->get(UserRepository::class)->findByUsername('cmd_create_user');
+        $this->assertNotNull($user);
+        $this->assertSame('cmd.create@example.com', $user->getEmail());
+        $this->assertFalse($user->isAdmin());
+    }
+
+    public function testCreatingWithoutPasswordFails(): void
+    {
+        $tester = $this->tester();
+        $tester->execute(['username' => 'cmd_nopass_user']);
+        $this->assertSame(1, $tester->getStatusCode());
+        $this->assertStringContainsString('Password is required', $tester->getDisplay());
+    }
+
+    public function testUpdatesEmailWithoutTouchingPassword(): void
+    {
+        $tester = $this->tester();
+        $tester->execute([
+            'username' => 'cmd_update_user',
+            'password' => 'secret123',
+            '--email' => 'old@example.com',
+        ]);
+
+        $repo = self::getContainer()->get(UserRepository::class);
+        $originalHash = $repo->findByUsername('cmd_update_user')->getPassword();
+
+        $tester = $this->tester();
+        $tester->execute([
+            'username' => 'cmd_update_user',
+            '--email' => 'New@Example.com',
+            '--admin' => true,
+        ]);
+        $tester->assertCommandIsSuccessful();
+
+        self::getContainer()->get('doctrine')->getManager()->clear();
+        $user = self::getContainer()->get(UserRepository::class)->findByUsername('cmd_update_user');
+        $this->assertSame('new@example.com', $user->getEmail());
+        $this->assertTrue($user->isAdmin());
+        $this->assertSame($originalHash, $user->getPassword());
+    }
+}

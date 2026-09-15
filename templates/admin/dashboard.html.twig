@@ -36,10 +36,7 @@
         {% for u in users %}
             <tr class="border-b last:border-0">
                 <td class="py-2 pr-3 font-medium text-gray-800">{{ u.username }}</td>
-                <td class="py-2 pr-3 text-gray-600">
-                    {{ u.email ?? '—' }}
-                    {% if u.email is null %}<span class="text-red-600 text-xs">(missing)</span>{% endif %}
-                </td>
+                <td class="py-2 pr-3 text-gray-600">{{ u.email }}</td>
                 <td class="py-2 pr-3">
                     <span class="{{ u.active ? 'text-green-700' : 'text-gray-400' }}">{{ u.status.label }}</span>
                 </td>

@@ -43,12 +43,21 @@ class UserCommand extends Command
         $password = $input->getArgument('password');
         $email = $input->getOption('email');
 
+        if ($email !== null && trim($email) === '') {
+            $io->error('Email cannot be blank.');
+            return Command::FAILURE;
+        }
+
         $user = $this->userRepository->findByUsername($username);
         $isNew = $user === null;
 
         if ($isNew) {
             if (!$password) {
                 $io->error('Password is required when creating a new user.');
+                return Command::FAILURE;
+            }
+            if (!$email) {
+                $io->error('Email is required when creating a new user.');
                 return Command::FAILURE;
             }
             $user = new User();

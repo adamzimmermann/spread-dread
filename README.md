@@ -12,6 +12,7 @@ Built with Symfony 7, Tailwind CSS, and vanilla JavaScript.
 - **ESPN integration** — pull tournament teams, spreads, and final scores directly from ESPN's API
 - **Live score updates** — pull scores for completed games and automatically advance winners
 - **Per-user authentication** — each player logs in with their own account
+- **Admin dashboard** — invite-only account creation, with per-user enable/disable and admin management
 - **Mobile-friendly** — responsive card-based UI with sticky navigation and region tabs
 
 ## Requirements
@@ -44,15 +45,12 @@ opens `/admin`, and sends an invite to an email address; the recipient follows t
 link to set a username and password.
 
 The `app:user` command still exists as a break-glass path for when there's no admin
-yet (bootstrapping the first account) or SMTP is down:
+yet (bootstrapping the first account) or SMTP is down. Creating a new account this
+way requires `--email`; updating an existing one does not:
 
 ```bash
 ddev exec php bin/console app:user <username> <password> --email=<address> [--admin]
 ```
-
-`--email` is optional while pre-existing accounts are still being backfilled, but
-set it whenever you create an account — a follow-up change makes the column
-`NOT NULL` and the option required.
 
 ## Development
 

@@ -6,6 +6,7 @@ use App\Entity\Bracket;
 use App\Entity\Game;
 use App\Entity\Team;
 use App\Entity\User;
+use App\Entity\UserStatus;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase as BaseWebTestCase;
@@ -21,11 +22,19 @@ abstract class WebTestCase extends BaseWebTestCase
         $this->em = static::getContainer()->get(EntityManagerInterface::class);
     }
 
-    protected function createUser(string $username = 'testuser', string $password = 'password'): User
-    {
+    protected function createUser(
+        string $username = 'testuser',
+        string $password = 'password',
+        ?string $email = null,
+        bool $isAdmin = false,
+        UserStatus $status = UserStatus::Active,
+    ): User {
         $user = new User();
         $user->setUsername($username);
         $user->setPassword(password_hash($password, PASSWORD_BCRYPT));
+        $user->setEmail($email ?? $username . '@example.com');
+        $user->setIsAdmin($isAdmin);
+        $user->setStatus($status);
         $this->em->persist($user);
         $this->em->flush();
         return $user;

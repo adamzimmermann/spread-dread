@@ -93,6 +93,17 @@ class AdminControllerTest extends WebTestCase
 
         $refetched = $this->em->find(User::class, $targetId);
         $this->assertSame(UserStatus::Disabled, $refetched->getStatus());
+
+        // Also pin the actual behaviour this status change is for: the
+        // disabled account can no longer log in.
+        $this->client->request('GET', '/logout');
+        $this->client->request('POST', '/login', [
+            'username' => 'adm_disable_target',
+            'password' => 'secret123',
+            '_token' => $this->csrfToken('/login'),
+        ]);
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextContains('.bg-red-100', 'Invalid username or password.');
     }
 
     public function testGrantingAdmin(): void

@@ -62,9 +62,10 @@ class SecurityControllerTest extends WebTestCase
         $this->client->request('POST', '/login', [
             'username' => 'test_disabled_user',
             'password' => 'secret123',
+            '_token' => $this->csrfToken('/login'),
         ]);
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorExists('.bg-red-100');
+        $this->assertSelectorTextContains('.bg-red-100', 'Invalid username or password.');
     }
 
     public function testLoginRecordsLastLoginAt(): void

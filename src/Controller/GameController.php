@@ -4,10 +4,9 @@ namespace App\Controller;
 
 use App\Entity\Game;
 use App\Entity\Pick;
-use App\Entity\User;
 use App\Repository\GameRepository;
 use App\Repository\TeamRepository;
-use App\Repository\UserRepository;
+use App\Security\SessionAuthenticator;
 use App\Service\ScoringService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -26,9 +25,9 @@ class GameController extends AbstractController
         GameRepository $gameRepository,
         TeamRepository $teamRepository,
         ScoringService $scoringService,
-        UserRepository $userRepository,
+        SessionAuthenticator $auth,
     ): Response {
-        $user = $this->requireUser($request, $userRepository);
+        $user = $auth->requireUser();
         $bracket = $game->getBracket();
         $player = $bracket->getPlayerNumber($user);
 
@@ -152,9 +151,9 @@ class GameController extends AbstractController
         GameRepository $gameRepository,
         TeamRepository $teamRepository,
         ScoringService $scoringService,
-        UserRepository $userRepository,
+        SessionAuthenticator $auth,
     ): JsonResponse {
-        $user = $this->requireUser($request, $userRepository);
+        $user = $auth->requireUser();
         $bracket = $game->getBracket();
         $currentPlayer = $bracket->getPlayerNumber($user);
 
@@ -214,15 +213,5 @@ class GameController extends AbstractController
             }
         }
         return null;
-    }
-
-    private function requireUser(Request $request, UserRepository $userRepository): User
-    {
-        $userId = $request->getSession()->get('user_id');
-        $user = $userId ? $userRepository->find($userId) : null;
-        if (!$user) {
-            throw $this->createAccessDeniedException();
-        }
-        return $user;
     }
 }

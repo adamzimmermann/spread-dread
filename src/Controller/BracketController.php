@@ -3,10 +3,10 @@
 namespace App\Controller;
 
 use App\Entity\Bracket;
-use App\Entity\User;
 use App\Repository\BracketRepository;
 use App\Repository\GameRepository;
 use App\Repository\UserRepository;
+use App\Security\SessionAuthenticator;
 use App\Service\BracketBuilderService;
 use App\Service\EspnApiService;
 use App\Service\ScoringService;
@@ -20,9 +20,9 @@ use Symfony\Component\Routing\Attribute\Route;
 class BracketController extends AbstractController
 {
     #[Route('/brackets', name: 'app_bracket_index')]
-    public function index(Request $request, BracketRepository $bracketRepository, UserRepository $userRepository): Response
+    public function index(BracketRepository $bracketRepository, SessionAuthenticator $auth): Response
     {
-        $user = $this->requireUser($request, $userRepository);
+        $user = $auth->requireUser();
         $brackets = $bracketRepository->findByUser($user);
 
         return $this->render('bracket/index.html.twig', [
@@ -37,8 +37,9 @@ class BracketController extends AbstractController
         BracketBuilderService $bracketBuilder,
         EspnApiService $espnApiService,
         UserRepository $userRepository,
+        SessionAuthenticator $auth,
     ): Response {
-        $user = $this->requireUser($request, $userRepository);
+        $user = $auth->requireUser();
 
         if ($request->isMethod('POST')) {
             $name = trim($request->request->get('name', ''));
@@ -91,8 +92,9 @@ class BracketController extends AbstractController
         Bracket $bracket,
         EntityManagerInterface $em,
         UserRepository $userRepository,
+        SessionAuthenticator $auth,
     ): Response {
-        $user = $this->requireUser($request, $userRepository);
+        $auth->requireUser();
 
         if ($request->isMethod('POST')) {
             $name = trim($request->request->get('name', ''));
@@ -124,9 +126,9 @@ class BracketController extends AbstractController
         Bracket $bracket,
         GameRepository $gameRepository,
         ScoringService $scoringService,
-        UserRepository $userRepository,
+        SessionAuthenticator $auth,
     ): Response {
-        $user = $this->requireUser($request, $userRepository);
+        $user = $auth->requireUser();
         $currentPlayer = $bracket->getPlayerNumber($user);
 
         $round = (int) $request->query->get('round', 1);
@@ -207,9 +209,9 @@ class BracketController extends AbstractController
         EspnApiService $espnApiService,
         GameRepository $gameRepository,
         ScoringService $scoringService,
-        UserRepository $userRepository,
+        SessionAuthenticator $auth,
     ): JsonResponse {
-        $user = $this->requireUser($request, $userRepository);
+        $user = $auth->requireUser();
         $currentPlayer = $bracket->getPlayerNumber($user);
 
         $round = (int) $request->request->get('round', 1);
@@ -247,9 +249,9 @@ class BracketController extends AbstractController
         EspnApiService $espnApiService,
         ScoringService $scoringService,
         GameRepository $gameRepository,
-        UserRepository $userRepository,
+        SessionAuthenticator $auth,
     ): JsonResponse {
-        $user = $this->requireUser($request, $userRepository);
+        $user = $auth->requireUser();
         $currentPlayer = $bracket->getPlayerNumber($user);
 
         $round = (int) $request->request->get('round', 1);
@@ -286,15 +288,5 @@ class BracketController extends AbstractController
             'cards' => $cards,
             'scores' => $scores,
         ]);
-    }
-
-    private function requireUser(Request $request, UserRepository $userRepository): User
-    {
-        $userId = $request->getSession()->get('user_id');
-        $user = $userId ? $userRepository->find($userId) : null;
-        if (!$user) {
-            throw $this->createAccessDeniedException();
-        }
-        return $user;
     }
 }

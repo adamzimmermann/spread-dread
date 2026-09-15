@@ -115,6 +115,12 @@ class Bracket
         return $this->player2?->getUsername() ?? 'Player 2';
     }
 
+    public function hasPlayer(User $user): bool
+    {
+        return ($this->player1 !== null && $this->player1->getId() === $user->getId())
+            || ($this->player2 !== null && $this->player2->getId() === $user->getId());
+    }
+
     public function getPlayerNumber(User $user): ?int
     {
         if ($this->player1 && $this->player1->getId() === $user->getId()) {

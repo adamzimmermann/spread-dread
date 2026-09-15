@@ -2,6 +2,7 @@
 
 namespace App\Security;
 
+use App\Entity\Bracket;
 use App\Entity\User;
 use App\Repository\UserRepository;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -51,6 +52,15 @@ class SessionAuthenticator
         $user = $this->requireUser();
         if (!$user->isAdmin()) {
             throw new AccessDeniedException('Administrator access required.');
+        }
+        return $user;
+    }
+
+    public function requireBracketAccess(Bracket $bracket): User
+    {
+        $user = $this->requireUser();
+        if (!$bracket->hasPlayer($user) && !$user->isAdmin()) {
+            throw new AccessDeniedException('This bracket belongs to someone else.');
         }
         return $user;
     }

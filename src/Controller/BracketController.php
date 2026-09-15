@@ -94,7 +94,7 @@ class BracketController extends AbstractController
         UserRepository $userRepository,
         SessionAuthenticator $auth,
     ): Response {
-        $auth->requireUser();
+        $auth->requireBracketAccess($bracket);
 
         if ($request->isMethod('POST')) {
             $name = trim($request->request->get('name', ''));
@@ -128,7 +128,7 @@ class BracketController extends AbstractController
         ScoringService $scoringService,
         SessionAuthenticator $auth,
     ): Response {
-        $user = $auth->requireUser();
+        $user = $auth->requireBracketAccess($bracket);
         $currentPlayer = $bracket->getPlayerNumber($user);
 
         $round = (int) $request->query->get('round', 1);
@@ -211,7 +211,7 @@ class BracketController extends AbstractController
         ScoringService $scoringService,
         SessionAuthenticator $auth,
     ): JsonResponse {
-        $user = $auth->requireUser();
+        $user = $auth->requireBracketAccess($bracket);
         $currentPlayer = $bracket->getPlayerNumber($user);
 
         $round = (int) $request->request->get('round', 1);
@@ -251,7 +251,7 @@ class BracketController extends AbstractController
         GameRepository $gameRepository,
         SessionAuthenticator $auth,
     ): JsonResponse {
-        $user = $auth->requireUser();
+        $user = $auth->requireBracketAccess($bracket);
         $currentPlayer = $bracket->getPlayerNumber($user);
 
         $round = (int) $request->request->get('round', 1);

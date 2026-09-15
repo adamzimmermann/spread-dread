@@ -75,11 +75,11 @@ class GameControllerTest extends WebTestCase
         $game = $this->createGame($bracket, $duke, $norfolk);
 
         $this->loginViaForm('gc_nonp_outsider');
+        $this->client->catchExceptions(false);
+        $this->expectException(\Symfony\Component\Security\Core\Exception\AccessDeniedException::class);
         $this->client->request('POST', "/api/games/{$game->getId()}/pick", [
             'team_id' => $duke->getId(),
         ]);
-
-        $this->assertResponseStatusCodeSame(403);
     }
 
     public function testAssignPickRejectsInvalidTeam(): void

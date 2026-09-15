@@ -27,8 +27,8 @@ class GameController extends AbstractController
         ScoringService $scoringService,
         SessionAuthenticator $auth,
     ): Response {
-        $user = $auth->requireUser();
         $bracket = $game->getBracket();
+        $user = $auth->requireBracketAccess($bracket);
         $player = $bracket->getPlayerNumber($user);
 
         if (!$player) {
@@ -153,8 +153,8 @@ class GameController extends AbstractController
         ScoringService $scoringService,
         SessionAuthenticator $auth,
     ): JsonResponse {
-        $user = $auth->requireUser();
         $bracket = $game->getBracket();
+        $user = $auth->requireBracketAccess($bracket);
         $currentPlayer = $bracket->getPlayerNumber($user);
 
         $spread = $request->request->get('spread');

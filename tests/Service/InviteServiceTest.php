@@ -3,7 +3,7 @@
 namespace App\Tests\Service;
 
 use App\Entity\InviteStatus;
-use App\Repository\UserRepository;
+use App\Service\InviteNotRedeemableException;
 use App\Service\InviteService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
@@ -101,6 +101,15 @@ class InviteServiceTest extends KernelTestCase
         $this->assertTrue(password_verify('secret123', $user->getPassword()));
         $this->assertSame(InviteStatus::Accepted, $invite->getStatus());
         $this->assertSame($user->getId(), $invite->getAcceptedUser()->getId());
+    }
+
+    public function testAcceptRefusesSecondCallOnSameInvite(): void
+    {
+        $invite = $this->service->create('inv.twice@example.com', $this->admin('inv_twice_admin'));
+        $this->service->accept($invite, 'inv_twice_user', 'secret123');
+
+        $this->expectException(InviteNotRedeemableException::class);
+        $this->service->accept($invite, 'inv_twice_user_two', 'secret123');
     }
 
     public function testAcceptedInviteIsNoLongerRedeemable(): void

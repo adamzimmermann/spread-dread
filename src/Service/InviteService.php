@@ -83,6 +83,10 @@ class InviteService
 
     public function accept(Invite $invite, string $username, string $password): User
     {
+        if (!$invite->isRedeemable()) {
+            throw new InviteNotRedeemableException('This invite is no longer redeemable.');
+        }
+
         $user = new User();
         $user->setUsername($username);
         $user->setEmail($invite->getEmail());

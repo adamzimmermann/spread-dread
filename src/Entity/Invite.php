@@ -6,7 +6,6 @@ use App\Repository\InviteRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: InviteRepository::class)]
-#[ORM\Index(name: 'idx_invite_token_hash', columns: ['token_hash'])]
 class Invite
 {
     #[ORM\Id]
@@ -17,7 +16,7 @@ class Invite
     #[ORM\Column(length: 180)]
     private string $email;
 
-    #[ORM\Column(length: 64)]
+    #[ORM\Column(length: 64, unique: true)]
     private string $tokenHash;
 
     #[ORM\Column(length: 20, enumType: InviteStatus::class)]

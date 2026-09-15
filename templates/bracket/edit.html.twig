@@ -13,27 +13,23 @@
                class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
     </div>
 
-    <div class="grid grid-cols-2 gap-4">
-        <div>
-            <label for="player1_id" class="block text-sm font-medium text-gray-700 mb-1">Player 1</label>
-            <select name="player1_id" id="player1_id"
-                    class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">-- Select --</option>
-                {% for u in users %}
-                    <option value="{{ u.id }}" {{ bracket.player1 and bracket.player1.id == u.id ? 'selected' : '' }}>{{ u.username }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div>
-            <label for="player2_id" class="block text-sm font-medium text-gray-700 mb-1">Player 2</label>
-            <select name="player2_id" id="player2_id"
-                    class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">-- Select --</option>
-                {% for u in users %}
-                    <option value="{{ u.id }}" {{ bracket.player2 and bracket.player2.id == u.id ? 'selected' : '' }}>{{ u.username }}</option>
-                {% endfor %}
-            </select>
-        </div>
+    <div>
+        <span class="block text-sm font-medium text-gray-700 mb-1">Player 1</span>
+        <p class="border border-gray-200 bg-gray-50 rounded px-3 py-2 text-gray-700">{{ bracket.player1Name }}</p>
+    </div>
+
+    <div>
+        <label for="opponent_username" class="block text-sm font-medium text-gray-700 mb-1">Who are you playing?</label>
+        <input type="text" name="opponent_username" id="opponent_username" list="opponents"
+               autocomplete="off" placeholder="Start typing a username"
+               value="{{ bracket.player2 ? bracket.player2.username : '' }}"
+               class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <datalist id="opponents">
+            {% for u in opponents %}<option value="{{ u.username }}">{% endfor %}
+        </datalist>
+        {% if opponents is empty %}
+            <p class="text-sm text-gray-500 mt-1">No other active players yet — ask an admin to invite someone.</p>
+        {% endif %}
     </div>
 
     <button type="submit"

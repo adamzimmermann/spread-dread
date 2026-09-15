@@ -40,6 +40,7 @@ class BracketController extends AbstractController
         SessionAuthenticator $auth,
     ): Response {
         $user = $auth->requireUser();
+        $opponents = $userRepository->findActiveOpponents($user);
 
         if ($request->isMethod('POST')) {
             if (!$this->isCsrfTokenValid('app', (string) $request->request->get('_token'))) {
@@ -48,11 +49,25 @@ class BracketController extends AbstractController
 
             $name = trim($request->request->get('name', ''));
             $year = (int) $request->request->get('year', date('Y'));
+            $opponentUsername = trim($request->request->get('opponent_username', ''));
 
-            if (empty($name)) {
-                $this->addFlash('error', 'Bracket name is required.');
+            $opponent = $opponentUsername === '' ? null : $userRepository->findByUsername($opponentUsername);
+            $opponentIsValid = $opponent
+                && $opponent->isActive()
+                && $opponent->getId() !== $user->getId();
+
+            $error = null;
+            if ($name === '') {
+                $error = 'Bracket name is required.';
+            } elseif (!$opponentIsValid) {
+                $error = 'Pick an opponent from the list.';
+            }
+
+            if ($error !== null) {
+                $this->addFlash('error', $error);
                 return $this->render('bracket/create.html.twig', [
-                    'users' => $userRepository->findAll(),
+                    'opponents' => $opponents,
+                    'currentUser' => $user,
                 ]);
             }
 
@@ -60,18 +75,10 @@ class BracketController extends AbstractController
             $bracket->setName($name);
             $bracket->setYear($year);
             $bracket->setFirstPicker(random_int(1, 2));
-
-            $player1Id = $request->request->get('player1_id');
-            $player2Id = $request->request->get('player2_id');
-            if ($player1Id) {
-                $bracket->setPlayer1($userRepository->find((int) $player1Id));
-            }
-            if ($player2Id) {
-                $bracket->setPlayer2($userRepository->find((int) $player2Id));
-            }
+            $bracket->setPlayer1($user);
+            $bracket->setPlayer2($opponent);
 
             $em->persist($bracket);
-
             $bracketBuilder->buildBracket($bracket);
 
             // Auto-populate teams from ESPN
@@ -86,7 +93,8 @@ class BracketController extends AbstractController
         }
 
         return $this->render('bracket/create.html.twig', [
-            'users' => $userRepository->findAll(),
+            'opponents' => $opponents,
+            'currentUser' => $user,
         ]);
     }
 
@@ -98,7 +106,8 @@ class BracketController extends AbstractController
         UserRepository $userRepository,
         SessionAuthenticator $auth,
     ): Response {
-        $auth->requireBracketAccess($bracket);
+        $user = $auth->requireBracketAccess($bracket);
+        $opponents = $userRepository->findActiveOpponents($user);
 
         if ($request->isMethod('POST')) {
             if (!$this->isCsrfTokenValid('app', (string) $request->request->get('_token'))) {
@@ -106,25 +115,32 @@ class BracketController extends AbstractController
             }
 
             $name = trim($request->request->get('name', ''));
-
-            if (!empty($name)) {
+            if ($name !== '') {
                 $bracket->setName($name);
             }
 
-            $player1Id = $request->request->get('player1_id');
-            $player2Id = $request->request->get('player2_id');
-            $bracket->setPlayer1($player1Id ? $userRepository->find((int) $player1Id) : null);
-            $bracket->setPlayer2($player2Id ? $userRepository->find((int) $player2Id) : null);
+            $opponentUsername = trim($request->request->get('opponent_username', ''));
+            if ($opponentUsername !== '') {
+                $opponent = $userRepository->findByUsername($opponentUsername);
+                if ($opponent && $opponent->isActive() && $opponent->getId() !== $bracket->getPlayer1()?->getId()) {
+                    $bracket->setPlayer2($opponent);
+                } else {
+                    $this->addFlash('error', 'Pick an opponent from the list.');
+                    return $this->render('bracket/edit.html.twig', [
+                        'bracket' => $bracket,
+                        'opponents' => $opponents,
+                    ]);
+                }
+            }
 
             $em->flush();
-
             $this->addFlash('success', 'Bracket updated.');
             return $this->redirectToRoute('app_bracket_show', ['id' => $bracket->getId()]);
         }
 
         return $this->render('bracket/edit.html.twig', [
             'bracket' => $bracket,
-            'users' => $userRepository->findAll(),
+            'opponents' => $opponents,
         ]);
     }
 

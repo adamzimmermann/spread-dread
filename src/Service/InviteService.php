@@ -6,6 +6,8 @@ use App\Entity\Invite;
 use App\Entity\InviteStatus;
 use App\Entity\User;
 use App\Repository\InviteRepository;
+use App\Repository\UserRepository;
+use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Bridge\Twig\Mime\TemplatedEmail;
@@ -32,6 +34,7 @@ class InviteService
     public function __construct(
         private EntityManagerInterface $em,
         private InviteRepository $inviteRepository,
+        private UserRepository $userRepository,
         private MailerInterface $mailer,
         private UrlGeneratorInterface $urlGenerator,
         private LoggerInterface $logger,
@@ -87,6 +90,16 @@ class InviteService
             throw new InviteNotRedeemableException('This invite is no longer redeemable.');
         }
 
+        // The invite was redeemable when issued and when the accept page was
+        // rendered, but an account for this email can have been created since
+        // (a second invite accepted, or `app:user`) — the unique constraint on
+        // user.email would otherwise turn this flush into an uncaught 500 on a
+        // public, unauthenticated route. Treat it as a state change to the
+        // invite: it is no longer redeemable.
+        if ($this->userRepository->findByEmail($invite->getEmail())) {
+            throw new InviteNotRedeemableException('An account already exists for this invite.');
+        }
+
         $user = new User();
         $user->setUsername($username);
         $user->setEmail($invite->getEmail());
@@ -98,7 +111,15 @@ class InviteService
         $invite->setAcceptedAt(new \DateTimeImmutable());
         $invite->setAcceptedUser($user);
 
-        $this->em->flush();
+        try {
+            $this->em->flush();
+        } catch (UniqueConstraintViolationException) {
+            // Belt-and-suspenders for the sliver of the findByEmail() check
+            // above that a true concurrent accept of the same invite can
+            // still race past: the database's UNIQUE constraint on
+            // user.email is the actual backstop. Same conclusion either way.
+            throw new InviteNotRedeemableException('An account already exists for this invite.');
+        }
 
         return $user;
     }

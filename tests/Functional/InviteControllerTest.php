@@ -84,6 +84,28 @@ class InviteControllerTest extends WebTestCase
         $this->assertSelectorTextContains('body', 'no longer valid');
     }
 
+    public function testAccountCreatedForInviteEmailAfterIssueShowsGenericPageNotA500(): void
+    {
+        [, $token] = $this->newInvite('inv_taken_email_admin', 'inv.takenemail@example.com');
+
+        // An account for the invite's address shows up after the invite was
+        // sent — a second invite accepted first, or `app:user` — with no race
+        // involved at all.
+        $this->createUser('inv_takenemail_user', 'password', 'inv.takenemail@example.com');
+
+        $crawler = $this->client->request('GET', "/invite/$token");
+        $form = $crawler->selectButton('Create account')->form([
+            'username' => 'inv_takenemail_newuser',
+            'password' => 'secret123',
+            'password_confirm' => 'secret123',
+        ]);
+        $this->client->submit($form);
+
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextContains('body', 'no longer valid');
+        $this->assertSelectorNotExists('input[name="username"]');
+    }
+
     public function testTokenCannotBeReused(): void
     {
         [, $token] = $this->newInvite('inv_reuse_admin', 'inv.reuse@example.com');

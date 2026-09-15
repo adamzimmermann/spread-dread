@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Repository\UserRepository;
 use App\Security\SessionAuthenticator;
+use App\Service\InviteNotRedeemableException;
 use App\Service\InviteService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -50,7 +51,15 @@ class InviteController extends AbstractController
             } elseif ($password !== $confirm) {
                 $error = 'The passwords do not match.';
             } else {
-                $user = $inviteService->accept($invite, $username, $password);
+                try {
+                    $user = $inviteService->accept($invite, $username, $password);
+                } catch (InviteNotRedeemableException) {
+                    // The invite was redeemable moments ago (findRedeemable()
+                    // above) but no longer is — an account for this email was
+                    // created in between. Same generic page as any other
+                    // no-longer-valid invite; never disclose why.
+                    return $this->render('invite/invalid.html.twig');
+                }
                 $auth->login($user);
                 return $this->redirectToRoute('app_bracket_index');
             }

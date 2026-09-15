@@ -103,6 +103,25 @@ class InviteServiceTest extends KernelTestCase
         $this->assertSame($user->getId(), $invite->getAcceptedUser()->getId());
     }
 
+    public function testAcceptRefusesWhenAnAccountAlreadyExistsForTheEmail(): void
+    {
+        $invite = $this->service->create('inv.preexisting@example.com', $this->admin('inv_pre_admin'));
+
+        // Simulates an account showing up for this email after the invite was
+        // issued (a second invite accepted, or `app:user`) — the invite itself
+        // is still Sent/redeemable, but accept() must still refuse rather than
+        // hit the user.email UNIQUE constraint on flush.
+        $existing = new User();
+        $existing->setUsername('inv_pre_existing_user');
+        $existing->setEmail('inv.preexisting@example.com');
+        $existing->setPassword(password_hash('x', PASSWORD_BCRYPT));
+        $this->em->persist($existing);
+        $this->em->flush();
+
+        $this->expectException(InviteNotRedeemableException::class);
+        $this->service->accept($invite, 'inv_pre_newuser', 'secret123');
+    }
+
     public function testAcceptRefusesSecondCallOnSameInvite(): void
     {
         $invite = $this->service->create('inv.twice@example.com', $this->admin('inv_twice_admin'));

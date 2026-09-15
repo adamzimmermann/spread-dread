@@ -144,6 +144,34 @@ class BracketOpponentTest extends WebTestCase
         $this->assertSame($originalPlayer2Id, $refetched->getPlayer2()->getId());
     }
 
+    public function testPlayerTwoEditingOwnBracketWithoutTouchingOpponentSucceeds(): void
+    {
+        $player1 = $this->createUser('opp_edit_p2self_p1');
+        $player2 = $this->createUser('opp_edit_p2self_p2');
+        $bracket = $this->createBracket($player1, $player2);
+        $bracketId = $bracket->getId();
+        $player2Id = $player2->getId();
+
+        $this->loginViaForm('opp_edit_p2self_p2');
+
+        // Deliberately do not pass opponent_username: the form's own
+        // pre-filled default (the current player 2's own username, per
+        // edit.html.twig) travels with the submission unmodified, exactly
+        // as it would if a real player saved the form without touching
+        // that field.
+        $crawler = $this->client->request('GET', "/brackets/{$bracketId}/edit");
+        $form = $crawler->selectButton('Save Changes')->form([
+            'name' => 'Renamed By Player Two',
+        ]);
+        $this->client->submit($form);
+
+        $this->assertResponseRedirects("/brackets/{$bracketId}");
+
+        $refetched = static::getContainer()->get(BracketRepository::class)->find($bracketId);
+        $this->assertSame($player2Id, $refetched->getPlayer2()->getId());
+        $this->assertSame('Renamed By Player Two', $refetched->getName());
+    }
+
     public function testRejectedEditLeavesPlayerTwoUnchanged(): void
     {
         $player1 = $this->createUser('opp_edit_rej_p1');

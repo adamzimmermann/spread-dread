@@ -122,11 +122,19 @@ class BracketController extends AbstractController
             $opponentUsername = trim($request->request->get('opponent_username', ''));
             if ($opponentUsername !== '') {
                 $opponent = $userRepository->findByUsername($opponentUsername);
-                if ($opponent
+
+                // A participant re-submitting their own name (e.g. player 2
+                // saving the form without touching the pre-filled opponent
+                // field) is a no-op, not an attempt to insert themselves.
+                // Only an outsider (typically an admin editing someone
+                // else's bracket) is barred from naming themselves opponent.
+                $actingUserIsParticipant = $bracket->hasPlayer($user);
+                $opponentIsValid = $opponent
                     && $opponent->isActive()
                     && $opponent->getId() !== $bracket->getPlayer1()?->getId()
-                    && $opponent->getId() !== $user->getId()
-                ) {
+                    && ($actingUserIsParticipant || $opponent->getId() !== $user->getId());
+
+                if ($opponentIsValid) {
                     $bracket->setPlayer2($opponent);
                 } else {
                     $this->addFlash('error', 'Pick an opponent from the list.');

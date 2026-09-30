@@ -234,4 +234,55 @@ class AdminControllerTest extends WebTestCase
         $this->expectException(AccessDeniedException::class);
         $this->client->request('POST', '/admin/tournament', ['_token' => $token, 'year' => 2027, 'east_opponent' => 'West']);
     }
+
+    public function testPairingForAnotherYearIsRejected(): void
+    {
+        $this->createUser('adm_ffyear_admin', 'password', null, true);
+        $this->loginViaForm('adm_ffyear_admin');
+        $year = static::getContainer()->get(\App\Service\TournamentCalendar::class)->activeYear();
+
+        $this->client->request('POST', '/admin/tournament', [
+            '_token' => $this->csrfToken('/admin'),
+            'year' => $year + 1,
+            'east_opponent' => 'Midwest',
+        ]);
+        $this->assertResponseRedirects('/admin');
+        $this->assertNull(static::getContainer()->get(\App\Service\TournamentCalendar::class)->eastOpponent($year + 1));
+        $this->client->followRedirect();
+        $this->assertSelectorTextContains('body', "only be set for $year");
+    }
+
+    public function testPairingCannotChangeOnceBracketsExist(): void
+    {
+        $this->createUser('adm_fflock_admin', 'password', null, true);
+        $calendar = static::getContainer()->get(\App\Service\TournamentCalendar::class);
+        $year = $calendar->activeYear();
+        $calendar->setEastOpponent($year, 'West');
+        $bracket = $this->createBracket($this->createUser('adm_fflock_p1'), $this->createUser('adm_fflock_p2'));
+        $bracket->setYear($year);
+        $this->em->flush();
+
+        $this->loginViaForm('adm_fflock_admin');
+        $this->client->request('GET', '/admin');
+        $this->assertSelectorTextContains('body', 'Pairing locked');
+
+        $this->client->request('POST', '/admin/tournament', [
+            '_token' => $this->csrfToken('/admin'),
+            'year' => $year,
+            'east_opponent' => 'South',
+        ]);
+        $this->assertResponseRedirects('/admin');
+        $this->assertSame('West', static::getContainer()->get(\App\Service\TournamentCalendar::class)->eastOpponent($year));
+        $this->client->followRedirect();
+        $this->assertSelectorTextContains('body', 'brackets already exist');
+
+        // Saving the same value again is harmless.
+        $this->client->request('POST', '/admin/tournament', [
+            '_token' => $this->csrfToken('/admin'),
+            'year' => $year,
+            'east_opponent' => 'West',
+        ]);
+        $this->client->followRedirect();
+        $this->assertSelectorTextContains('body', 'Final Four pairing saved');
+    }
 }

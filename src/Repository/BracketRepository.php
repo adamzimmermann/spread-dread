@@ -25,4 +25,9 @@ class BracketRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    public function existsForYear(int $year): bool
+    {
+        return $this->count(['year' => $year]) > 0;
+    }
 }

@@ -41,4 +41,13 @@ class GameRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    public function countMissingFirstRoundTeams(Bracket $bracket): int
+    {
+        $missing = 0;
+        foreach ($this->findByBracketAndRound($bracket, 1) as $game) {
+            $missing += ($game->getTeam1() === null ? 1 : 0) + ($game->getTeam2() === null ? 1 : 0);
+        }
+        return $missing;
+    }
 }

@@ -44,6 +44,13 @@
     {% endfor %}
 </div>
 
+{% if missingTeams > 0 %}
+<button type="button" id="btn-pull-teams" onclick="pullTeams({{ bracket.id }})"
+        class="w-full mb-4 bg-amber-50 border border-amber-300 text-amber-800 px-3 py-2 rounded text-sm font-medium hover:bg-amber-100 cursor-pointer">
+    Load missing teams ({{ missingTeams }})
+</button>
+{% endif %}
+
 {# Action buttons #}
 <div class="flex gap-2 mb-4">
     <button onclick="pullSpreads({{ bracket.id }}, {{ currentRound }})"

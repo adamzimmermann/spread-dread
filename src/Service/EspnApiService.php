@@ -155,7 +155,10 @@ class EspnApiService implements ResetInterface
                 $teamData = $competitor['team'] ?? [];
                 $teamName = $teamData['displayName'] ?? $teamData['shortDisplayName'] ?? '';
 
-                if (!$seed || !$teamName) {
+                // Before the First Four is played ESPN may list a placeholder
+                // ("TBD", or "Team A/Team B"). Leave the slot empty; a later
+                // pull fills it.
+                if (!$seed || !$teamName || stripos($teamName, 'TBD') !== false || str_contains($teamName, '/')) {
                     continue;
                 }
 

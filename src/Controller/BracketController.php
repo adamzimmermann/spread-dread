@@ -236,6 +236,7 @@ class BracketController extends AbstractController
             'opponentPicksDone' => $opponentPicksDone,
             'opponentPickTotal' => $opponentPickTotal,
             'opponentName' => $opponentName,
+            'missingTeams' => $gameRepository->countMissingFirstRoundTeams($bracket),
         ]);
     }
 
@@ -332,6 +333,27 @@ class BracketController extends AbstractController
             'result' => $result,
             'cards' => $cards,
             'scores' => $scores,
+        ]);
+    }
+
+    #[Route('/api/brackets/{id}/pull-teams', name: 'api_bracket_pull_teams', methods: ['POST'])]
+    public function pullTeams(
+        Request $request,
+        Bracket $bracket,
+        EspnApiService $espnApiService,
+        GameRepository $gameRepository,
+        SessionAuthenticator $auth,
+    ): JsonResponse {
+        if (!$this->isCsrfTokenValid('app', (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Invalid CSRF token.');
+        }
+        $auth->requireBracketAccess($bracket);
+
+        $result = $espnApiService->populateBracketTeams($bracket);
+
+        return $this->json([
+            'result' => $result,
+            'missing' => $gameRepository->countMissingFirstRoundTeams($bracket),
         ]);
     }
 }

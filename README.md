@@ -87,8 +87,8 @@ ddev exec php bin/console cache:clear
 
 ## How It Works
 
-1. **Create a bracket** — set the tournament year and assign two players
-2. **Pull teams** — fetch the 68-team field from ESPN, or enter teams manually
+1. **Selection Sunday** — an admin sets the Final Four pairing (which region plays East) in `/admin`. The tournament year is chosen automatically.
+2. **Create a bracket** — brackets open once the pairing is set and ESPN lists the field; pick an opponent and the first-round teams load automatically. "Load missing teams" fills the First Four slots once those games are decided.
 3. **Make picks** — players take turns picking teams; the opponent automatically gets the other team
 4. **Pull spreads** — fetch point spreads from ESPN for each round
 5. **Update scores** — pull final scores from ESPN; the app evaluates picks against the spread and advances winners to the next round

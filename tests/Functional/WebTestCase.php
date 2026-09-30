@@ -7,6 +7,7 @@ use App\Entity\Game;
 use App\Entity\Team;
 use App\Entity\User;
 use App\Entity\UserStatus;
+use App\Tests\Support\FakeEspn;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase as BaseWebTestCase;
@@ -20,6 +21,7 @@ abstract class WebTestCase extends BaseWebTestCase
     {
         $this->client = static::createClient();
         $this->em = static::getContainer()->get(EntityManagerInterface::class);
+        FakeEspn::reset();
     }
 
     protected function createUser(

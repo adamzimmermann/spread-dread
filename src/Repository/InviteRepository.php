@@ -3,6 +3,7 @@
 namespace App\Repository;
 
 use App\Entity\Invite;
+use App\Entity\InviteStatus;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -19,10 +20,19 @@ class InviteRepository extends ServiceEntityRepository
         return $this->findOneBy(['tokenHash' => $tokenHash]);
     }
 
-    /** @return Invite[] */
-    public function findAllNewestFirst(): array
+    /**
+     * Invites still waiting to be accepted: sent and not yet expired. Mirrors
+     * Invite::isRedeemable().
+     *
+     * @return Invite[]
+     */
+    public function findPendingNewestFirst(): array
     {
         return $this->createQueryBuilder('i')
+            ->where('i.status = :status')
+            ->andWhere('i.expiresAt >= :now')
+            ->setParameter('status', InviteStatus::Sent)
+            ->setParameter('now', new \DateTimeImmutable())
             ->orderBy('i.createdAt', 'DESC')
             ->getQuery()
             ->getResult();

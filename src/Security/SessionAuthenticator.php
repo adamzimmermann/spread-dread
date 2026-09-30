@@ -5,6 +5,7 @@ namespace App\Security;
 use App\Entity\Bracket;
 use App\Entity\User;
 use App\Repository\UserRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 
@@ -17,6 +18,7 @@ class SessionAuthenticator
     public function __construct(
         private RequestStack $requestStack,
         private UserRepository $userRepository,
+        private EntityManagerInterface $em,
     ) {
     }
 
@@ -72,6 +74,10 @@ class SessionAuthenticator
         $session->migrate(true);
         $session->set('user_id', $user->getId());
         $session->set('username', $user->getUsername());
+
+        // Every way in (login form, invite acceptance, password reset) counts.
+        $user->setLastLoginAt(new \DateTimeImmutable());
+        $this->em->flush();
     }
 
     public function logout(): void

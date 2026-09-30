@@ -198,19 +198,24 @@ class EspnApiService implements ResetInterface
     }
 
     /**
-     * Pull spreads from ESPN for games in a bracket round.
-     * Uses per-event summary calls to get pickcenter spread data.
-     * @return array{matched: int, total: int, unmatched: array}
+     * Refresh spreads for a round from ESPN. Lines keep updating until the
+     * round's first pick; after that the round is locked so every pick is
+     * judged against the line it was made on.
+     * @return array{matched: int, total: int, unmatched: array, locked: bool}
      */
     public function pullSpreads(Bracket $bracket, int $roundNumber): array
     {
         $games = $this->gameRepository->findByBracketAndRound($bracket, $roundNumber);
 
+        if ($this->gameRepository->roundHasPicks($bracket, $roundNumber)) {
+            return ['matched' => 0, 'total' => count($games), 'unmatched' => [], 'locked' => true];
+        }
+
         $matched = 0;
         $unmatched = [];
 
         foreach ($games as $game) {
-            if ($game->getSpread() !== null) {
+            if ($game->isComplete()) {
                 continue;
             }
             if (!$game->getTeam1() || !$game->getTeam2()) {
@@ -233,20 +238,24 @@ class EspnApiService implements ResetInterface
 
             $summary = $this->fetchEventSummary($eventId);
             if (!$summary) {
-                $unmatched[] = $game->getId();
+                if ($game->getSpread() === null) {
+                    $unmatched[] = $game->getId();
+                }
                 continue;
             }
 
             if ($this->applySpread($game, $summary)) {
                 $matched++;
             } else {
-                $unmatched[] = $game->getId();
+                if ($game->getSpread() === null) {
+                    $unmatched[] = $game->getId();
+                }
             }
         }
 
         $this->em->flush();
 
-        return ['matched' => $matched, 'total' => count($games), 'unmatched' => $unmatched];
+        return ['matched' => $matched, 'total' => count($games), 'unmatched' => $unmatched, 'locked' => false];
     }
 
     /**

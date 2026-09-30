@@ -201,12 +201,6 @@ function setSpread(gameId) {
 function pullSpreads(bracketId, round) {
     var btn = document.getElementById('btn-spreads');
 
-    if (btn.dataset.hasSpreads === '1' && btn.dataset.hasPicks === '1') {
-        if (!confirm('Spreads have already been pulled and picks have been made for this round. Pulling again may change spreads and affect pick results. Continue?')) {
-            return;
-        }
-    }
-
     btn.classList.add('loading');
     btn.textContent = 'Pulling...';
 
@@ -216,6 +210,9 @@ function pullSpreads(bracketId, round) {
         if (data.error) {
             alert(data.error);
         } else {
+            if (data.result && data.result.locked) {
+                alert('Picks have been made in this round, so spreads are locked.');
+            }
             updateGameCards(data.cards);
             updateScoreCard(data.scores);
         }

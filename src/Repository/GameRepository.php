@@ -50,4 +50,17 @@ class GameRepository extends ServiceEntityRepository
         }
         return $missing;
     }
+
+    public function roundHasPicks(Bracket $bracket, int $roundNumber): bool
+    {
+        return (int) $this->createQueryBuilder('g')
+            ->select('COUNT(p.id)')
+            ->join('g.picks', 'p')
+            ->where('g.bracket = :bracket')
+            ->andWhere('g.roundNumber = :round')
+            ->setParameter('bracket', $bracket)
+            ->setParameter('round', $roundNumber)
+            ->getQuery()
+            ->getSingleScalarResult() > 0;
+    }
 }

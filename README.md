@@ -98,6 +98,14 @@ ddev exec php bin/console cache:clear
 
 Deploys automatically to Dreamhost via GitHub Actions on push to `main`. The workflow SSHs into the server, pulls the latest code, installs dependencies, runs migrations, and compiles assets.
 
+### Scheduled sync (March–April)
+
+`app:tournament:sync` pulls missing teams, spreads for rounds with no picks yet, and final scores for every bracket of the current tournament. Add it in the Dreamhost panel (Advanced → Cron Jobs) as the site's user:
+
+    0 * * 3,4 *   cd <app path> && php bin/console app:tournament:sync >> var/log/sync.log 2>&1
+
+Cron may use a different PHP than your shell; if the log shows a version error, use the full path shown by `which php` in an SSH session. Outside March and April the job doesn't run; the buttons on each bracket page still work at any time.
+
 ## Tech Stack
 
 - **Backend:** PHP 8.4, Symfony 7, Doctrine ORM, MySQL 8.0

@@ -36,6 +36,7 @@ class EspnApiService implements ResetInterface
 
     /** @var array<int, array> tournament events per year, fetched once per request/command run */
     private array $eventsByYear = [];
+    private array $summaries = [];
 
     /**
      * Populate a bracket's R64 games with teams fetched from ESPN.
@@ -267,6 +268,11 @@ class EspnApiService implements ResetInterface
         $games = $this->gameRepository->findByBracketAndRound($bracket, $roundNumber);
         $year = $bracket->getYear();
 
+        $pending = array_filter($games, fn (Game $g) => !$g->isComplete() && $g->getTeam1() && $g->getTeam2());
+        if ($pending === []) {
+            return ['updated' => 0, 'unmatched' => []];
+        }
+
         // Fetch scoreboard events for the tournament
         $events = $this->fetchTournamentEvents($year);
 
@@ -358,6 +364,7 @@ class EspnApiService implements ResetInterface
     public function reset(): void
     {
         $this->eventsByYear = [];
+        $this->summaries = [];
     }
 
     public function tournamentFieldIsSet(int $year): bool
@@ -367,11 +374,15 @@ class EspnApiService implements ResetInterface
 
     private function fetchEventSummary(string $eventId): ?array
     {
+        if (isset($this->summaries[$eventId])) {
+            return $this->summaries[$eventId];
+        }
+
         try {
             $response = $this->httpClient->request('GET', self::SUMMARY_URL, [
                 'query' => ['event' => $eventId],
             ]);
-            return $response->toArray();
+            return $this->summaries[$eventId] = $response->toArray();
         } catch (\Exception $e) {
             $this->logger->warning('ESPN summary request failed', ['event' => $eventId, 'error' => $e->getMessage()]);
             return null;

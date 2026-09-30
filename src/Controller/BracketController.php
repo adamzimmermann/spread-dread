@@ -303,14 +303,8 @@ class BracketController extends AbstractController
         $round = (int) $request->request->get('round', 1);
         $result = $espnApiService->updateScores($bracket, $round);
 
-        // Evaluate picks and advance winners for completed games
+        $scoringService->settleRound($bracket, $round);
         $games = $gameRepository->findByBracketAndRound($bracket, $round);
-        foreach ($games as $game) {
-            if ($game->isComplete()) {
-                $scoringService->evaluatePicks($game);
-                $scoringService->advanceWinner($game);
-            }
-        }
 
         $unmatchedIds = $result['unmatched'] ?? [];
         $cards = [];

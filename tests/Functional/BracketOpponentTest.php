@@ -4,9 +4,21 @@ namespace App\Tests\Functional;
 
 use App\Entity\UserStatus;
 use App\Repository\BracketRepository;
+use App\Service\TournamentCalendar;
+use App\Tests\Support\FakeEspn;
 
 class BracketOpponentTest extends WebTestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // The create form only renders once the tournament is open.
+        $calendar = static::getContainer()->get(TournamentCalendar::class);
+        $year = $calendar->activeYear();
+        FakeEspn::firstRound($year);
+        $calendar->setEastOpponent($year, 'West');
+    }
+
     public function testCreateFormListsActiveUsersExceptYourself(): void
     {
         $this->createUser('opp_list_me');
@@ -37,7 +49,6 @@ class BracketOpponentTest extends WebTestCase
         $crawler = $this->client->request('GET', '/brackets/create');
         $form = $crawler->selectButton('Create Bracket')->form([
             'name' => 'Opponent Test Bracket',
-            'year' => 2026,
             'opponent_username' => 'opp_create_them',
         ]);
         $this->client->submit($form);
@@ -57,7 +68,6 @@ class BracketOpponentTest extends WebTestCase
         $crawler = $this->client->request('GET', '/brackets/create');
         $form = $crawler->selectButton('Create Bracket')->form([
             'name' => 'Bad Opponent',
-            'year' => 2026,
             'opponent_username' => 'nobody_by_that_name',
         ]);
         $this->client->submit($form);
@@ -76,7 +86,6 @@ class BracketOpponentTest extends WebTestCase
         $crawler = $this->client->request('GET', '/brackets/create');
         $form = $crawler->selectButton('Create Bracket')->form([
             'name' => 'Disabled Opponent',
-            'year' => 2026,
             'opponent_username' => 'opp_dis_them',
         ]);
         $this->client->submit($form);
@@ -92,7 +101,6 @@ class BracketOpponentTest extends WebTestCase
         $crawler = $this->client->request('GET', '/brackets/create');
         $form = $crawler->selectButton('Create Bracket')->form([
             'name' => 'Self Bracket',
-            'year' => 2026,
             'opponent_username' => 'opp_self_me',
         ]);
         $this->client->submit($form);

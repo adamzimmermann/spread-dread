@@ -3,19 +3,14 @@
 {% block title %}Create Bracket - Spread Dread{% endblock %}
 
 {% block body %}
-<h1 class="text-xl font-bold text-gray-800 mb-4">Create Bracket</h1>
+<h1 class="text-xl font-bold text-gray-800 mb-4">Create {{ year }} Bracket</h1>
 
+{% if open %}
 <form method="post" class="space-y-4">
     <input type="hidden" name="_token" value="{{ csrf_token('app') }}">
     <div>
         <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Bracket Name</label>
-        <input type="text" name="name" id="name" required placeholder="e.g. Adam vs Aaron 2026"
-               class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-    </div>
-
-    <div>
-        <label for="year" class="block text-sm font-medium text-gray-700 mb-1">Tournament Year</label>
-        <input type="number" name="year" id="year" value="{{ 'now'|date('Y') }}" min="2020" max="2030"
+        <input type="text" name="name" id="name" required placeholder="e.g. Adam vs Aaron {{ year }}"
                class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
     </div>
 
@@ -42,6 +37,11 @@
         Create Bracket
     </button>
 </form>
+{% else %}
+<p class="bg-white rounded-lg shadow px-4 py-6 text-center text-gray-600">
+    Brackets for {{ year }} open after Selection Sunday, once the field is announced.
+</p>
+{% endif %}
 
 <a href="{{ path('app_bracket_index') }}" class="block text-center text-sm text-blue-600 mt-4 hover:underline">Cancel</a>
 {% endblock %}

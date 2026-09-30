@@ -10,6 +10,7 @@ use App\Security\SessionAuthenticator;
 use App\Service\BracketBuilderService;
 use App\Service\EspnApiService;
 use App\Service\ScoringService;
+use App\Service\TournamentCalendar;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -38,9 +39,14 @@ class BracketController extends AbstractController
         EspnApiService $espnApiService,
         UserRepository $userRepository,
         SessionAuthenticator $auth,
+        TournamentCalendar $calendar,
     ): Response {
         $user = $auth->requireUser();
         $opponents = $userRepository->findActiveOpponents($user);
+        $year = $calendar->activeYear();
+        $finalFourPairs = $calendar->finalFourPairs($year);
+        $open = $finalFourPairs !== null && $espnApiService->tournamentFieldIsSet($year);
+        $view = ['opponents' => $opponents, 'currentUser' => $user, 'year' => $year, 'open' => $open];
 
         if ($request->isMethod('POST')) {
             if (!$this->isCsrfTokenValid('app', (string) $request->request->get('_token'))) {
@@ -48,7 +54,6 @@ class BracketController extends AbstractController
             }
 
             $name = trim($request->request->get('name', ''));
-            $year = (int) $request->request->get('year', date('Y'));
             $opponentUsername = trim($request->request->get('opponent_username', ''));
 
             $opponent = $opponentUsername === '' ? null : $userRepository->findByUsername($opponentUsername);
@@ -57,7 +62,9 @@ class BracketController extends AbstractController
                 && $opponent->getId() !== $user->getId();
 
             $error = null;
-            if ($name === '') {
+            if (!$open) {
+                $error = "Brackets for $year open after Selection Sunday.";
+            } elseif ($name === '') {
                 $error = 'Bracket name is required.';
             } elseif (!$opponentIsValid) {
                 $error = 'Pick an opponent from the list.';
@@ -65,10 +72,7 @@ class BracketController extends AbstractController
 
             if ($error !== null) {
                 $this->addFlash('error', $error);
-                return $this->render('bracket/create.html.twig', [
-                    'opponents' => $opponents,
-                    'currentUser' => $user,
-                ]);
+                return $this->render('bracket/create.html.twig', $view);
             }
 
             $bracket = new Bracket();
@@ -79,7 +83,7 @@ class BracketController extends AbstractController
             $bracket->setPlayer2($opponent);
 
             $em->persist($bracket);
-            $bracketBuilder->buildBracket($bracket);
+            $bracketBuilder->buildBracket($bracket, $finalFourPairs);
 
             // Auto-populate teams from ESPN
             $teamResult = $espnApiService->populateBracketTeams($bracket);
@@ -92,10 +96,7 @@ class BracketController extends AbstractController
             return $this->redirectToRoute('app_bracket_show', ['id' => $bracket->getId()]);
         }
 
-        return $this->render('bracket/create.html.twig', [
-            'opponents' => $opponents,
-            'currentUser' => $user,
-        ]);
+        return $this->render('bracket/create.html.twig', $view);
     }
 
     #[Route('/brackets/{id}/edit', name: 'app_bracket_edit', methods: ['GET', 'POST'])]

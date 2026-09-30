@@ -134,4 +134,19 @@ class BracketBuilderServiceTest extends WebTestCase
             $this->assertNotNull($ff->getTeam2(), 'Final Four team2');
         }
     }
+
+    public function testFinalFourFollowsTheGivenPairing(): void
+    {
+        $bracket = $this->createBracket($this->createUser('bb_pair_p1'), $this->createUser('bb_pair_p2'));
+        static::getContainer()->get(BracketBuilderService::class)
+            ->buildBracket($bracket, [['East', 'South'], ['West', 'Midwest']]);
+
+        $byFinalFour = [];
+        foreach ($this->em->getRepository(Game::class)->findBy(['bracket' => $bracket, 'roundNumber' => 4]) as $e8) {
+            $byFinalFour[$e8->getNextGame()->getBracketPosition()][$e8->getBracketPosition()] = $e8->getRegion();
+        }
+
+        $this->assertSame([1 => 'East', 2 => 'South'], $byFinalFour[1]);
+        $this->assertSame([1 => 'West', 2 => 'Midwest'], $byFinalFour[2]);
+    }
 }

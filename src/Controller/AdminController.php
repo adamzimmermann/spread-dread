@@ -9,6 +9,7 @@ use App\Repository\InviteRepository;
 use App\Repository\UserRepository;
 use App\Security\SessionAuthenticator;
 use App\Service\InviteService;
+use App\Service\TournamentCalendar;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -22,10 +23,13 @@ class AdminController extends AbstractController
         SessionAuthenticator $auth,
         UserRepository $userRepository,
         InviteRepository $inviteRepository,
+        TournamentCalendar $calendar,
     ): Response {
         $auth->requireAdmin();
 
         return $this->render('admin/dashboard.html.twig', [
+            'tournamentYear' => $calendar->activeYear(),
+            'eastOpponent' => $calendar->eastOpponent($calendar->activeYear()),
             'users' => $userRepository->findAllForAdmin(),
             'invites' => $inviteRepository->findPendingNewestFirst(),
         ]);
@@ -107,6 +111,26 @@ class AdminController extends AbstractController
 
         $inviteService->revoke($invite);
         $this->addFlash('success', 'Invitation revoked.');
+
+        return $this->redirectToRoute('app_admin_dashboard');
+    }
+
+    #[Route('/admin/tournament', name: 'app_admin_tournament', methods: ['POST'])]
+    public function setTournament(
+        Request $request,
+        SessionAuthenticator $auth,
+        TournamentCalendar $calendar,
+    ): Response {
+        $auth->requireAdmin();
+        $this->assertCsrf($request);
+
+        $year = (int) $request->request->get('year');
+        try {
+            $calendar->setEastOpponent($year, (string) $request->request->get('east_opponent'));
+            $this->addFlash('success', "Final Four pairing saved for $year.");
+        } catch (\InvalidArgumentException) {
+            $this->addFlash('error', 'Pick which region plays East.');
+        }
 
         return $this->redirectToRoute('app_admin_dashboard');
     }

@@ -191,4 +191,47 @@ class AdminControllerTest extends WebTestCase
         $this->assertStringNotContainsString('adm.revoked@example.com', $body);
         $this->assertStringNotContainsString('adm.expired@example.com', $body);
     }
+
+    public function testAdminSetsTheFinalFourPairing(): void
+    {
+        $this->createUser('adm_ff_admin', 'password', null, true);
+        $this->loginViaForm('adm_ff_admin');
+        $calendar = static::getContainer()->get(\App\Service\TournamentCalendar::class);
+        $year = $calendar->activeYear();
+
+        $crawler = $this->client->request('GET', '/admin');
+        $this->assertSelectorTextContains('body', "Tournament $year");
+        $form = $crawler->selectButton('Save pairing')->form(['east_opponent' => 'South']);
+        $this->client->submit($form);
+        $this->assertResponseRedirects('/admin');
+
+        $calendar = static::getContainer()->get(\App\Service\TournamentCalendar::class);
+        $this->assertSame('South', $calendar->eastOpponent($year));
+    }
+
+    public function testInvalidPairingIsRejected(): void
+    {
+        $this->createUser('adm_ffbad_admin', 'password', null, true);
+        $this->loginViaForm('adm_ffbad_admin');
+        $year = static::getContainer()->get(\App\Service\TournamentCalendar::class)->activeYear();
+
+        $this->client->request('POST', '/admin/tournament', [
+            '_token' => $this->csrfToken('/admin'),
+            'year' => $year,
+            'east_opponent' => 'East',
+        ]);
+        $this->assertResponseRedirects('/admin');
+        $this->assertNull(static::getContainer()->get(\App\Service\TournamentCalendar::class)->eastOpponent($year));
+    }
+
+    public function testNonAdminCannotSetThePairing(): void
+    {
+        $this->createUser('adm_ffplain_user');
+        $this->loginViaForm('adm_ffplain_user');
+        $token = $this->csrfToken();
+
+        $this->client->catchExceptions(false);
+        $this->expectException(AccessDeniedException::class);
+        $this->client->request('POST', '/admin/tournament', ['_token' => $token, 'year' => 2027, 'east_opponent' => 'West']);
+    }
 }

@@ -25,7 +25,11 @@ class BracketBuilderService
     ) {
     }
 
-    public function buildBracket(Bracket $bracket): void
+    /**
+     * @param array{0: array{0: string, 1: string}, 1: array{0: string, 1: string}} $finalFourPairs
+     *        Regions meeting in Final Four game 1 and game 2 (see TournamentCalendar::finalFourPairs()).
+     */
+    public function buildBracket(Bracket $bracket, array $finalFourPairs = TournamentCalendar::DEFAULT_PAIRS): void
     {
         $year = $bracket->getYear();
         $teams = $this->teamRepository->findByYear($year);
@@ -51,13 +55,9 @@ class BracketBuilderService
         $ff2->setNextGame($championship);
         $allGames[5] = [$ff1, $ff2];
 
-        // Rounds 1-4: Regional rounds
-        // Each region feeds one team to Final Four
-        // Regions pair: East/West -> FF game 1, South/Midwest -> FF game 2
-        $regionPairs = [
-            [self::REGIONS[0], self::REGIONS[1]], // East, West -> FF1
-            [self::REGIONS[2], self::REGIONS[3]], // South, Midwest -> FF2
-        ];
+        // Rounds 1-4: Regional rounds. Each region feeds one team to the Final
+        // Four; which regions meet is set per year (TournamentCalendar).
+        $regionPairs = $finalFourPairs;
 
         foreach ([4, 3, 2, 1] as $round) {
             $allGames[$round] = [];

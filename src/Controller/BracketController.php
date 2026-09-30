@@ -181,8 +181,8 @@ class BracketController extends AbstractController
             }
         }
 
-        $hasSpreads = false;
         $hasPicks = false;
+        $hasMissingSpreads = false;
         $pickerMap = [];
         $myPicksDone = 0;
         $myPickTotal = 0;
@@ -191,11 +191,11 @@ class BracketController extends AbstractController
         $opponentPlayer = $currentPlayer === 1 ? 2 : ($currentPlayer === 2 ? 1 : null);
 
         foreach ($games as $index => $game) {
-            if ($game->getSpread() !== null) {
-                $hasSpreads = true;
-            }
             if (!$game->getPicks()->isEmpty()) {
                 $hasPicks = true;
+            } elseif ($game->getSpread() === null && !$game->isComplete() && $game->getTeam1() && $game->getTeam2()) {
+                // Teams set after the round's first pick still need their first line.
+                $hasMissingSpreads = true;
             }
 
             // Compute picker for each game
@@ -228,8 +228,8 @@ class BracketController extends AbstractController
             'availableRounds' => $availableRounds,
             'scores' => $scores,
             'current_player' => $currentPlayer,
-            'roundHasSpreads' => $hasSpreads,
             'roundHasPicks' => $hasPicks,
+            'roundHasMissingSpreads' => $hasMissingSpreads,
             'pickerMap' => $pickerMap,
             'myPicksDone' => $myPicksDone,
             'myPickTotal' => $myPickTotal,

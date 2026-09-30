@@ -210,7 +210,7 @@ function pullSpreads(bracketId, round) {
         if (data.error) {
             alert(data.error);
         } else {
-            if (data.result && data.result.locked) {
+            if (data.result && data.result.locked && data.result.matched === 0) {
                 alert('Picks have been made in this round, so spreads are locked.');
             }
             updateGameCards(data.cards);

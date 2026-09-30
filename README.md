@@ -98,7 +98,7 @@ ddev exec php bin/console cache:clear
 
 1. **Selection Sunday:** in `/admin`, set which region plays East in the Final Four. Brackets open once this is set and ESPN lists the field.
 2. **After the First Four (Tue/Wed):** the sync job fills the four play-in slots; the "Load missing teams" button on a bracket does the same on demand.
-3. **Before each round's first pick:** spreads keep refreshing (sync or "Pull Spreads"). The first pick in a round locks that round's spreads.
+3. **Before each round's first pick:** spreads keep refreshing (sync or "Pull Spreads"). The first pick in a round locks the spreads already set in that round; games that get their teams later (First Four winners, the second semifinal) still receive their first line.
 
 ## Deployment
 
@@ -106,7 +106,7 @@ Deploys automatically to Dreamhost via GitHub Actions on push to `main`. The wor
 
 ### Scheduled sync (March–April)
 
-`app:tournament:sync` pulls missing teams, spreads for rounds with no picks yet, and final scores for every bracket of the current tournament. Add it in the Dreamhost panel (Advanced → Cron Jobs) as the site's user:
+`app:tournament:sync` pulls missing teams, spreads (refreshed for rounds with no picks yet, filled in for games still without a line), and final scores for every bracket of the current tournament. Add it in the Dreamhost panel (Advanced → Cron Jobs) as the site's user:
 
     0 * * 3,4 *   cd <app path> && php bin/console app:tournament:sync >> var/log/sync.log 2>&1
 

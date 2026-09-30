@@ -53,7 +53,7 @@
 
 {# Action buttons #}
 <div class="flex gap-2 mb-4">
-    {% if roundHasPicks %}
+    {% if roundHasPicks and not roundHasMissingSpreads %}
     <button id="btn-spreads" disabled title="Picks have been made in this round, so spreads no longer change."
             class="flex-1 bg-gray-100 border border-gray-200 text-gray-400 px-3 py-2 rounded text-sm font-medium cursor-not-allowed">
         Spreads locked

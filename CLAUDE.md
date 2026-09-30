@@ -106,6 +106,6 @@ Tailwind CSS compiled via `symfonycasts/tailwind-bundle` (standalone Tailwind CL
 All AJAX endpoints are POST and return JSON (except pick assignment which returns HTML):
 - `/api/games/{id}/pick` — Assign pick + auto-assign opponent
 - `/api/games/{id}/spread` — Set spread, re-evaluates picks if game complete
-- `/api/brackets/{id}/pull-spreads` — Refresh spreads for a round; locked once the round has a pick
+- `/api/brackets/{id}/pull-spreads` — Refresh spreads for a round; once the round has a pick, existing spreads are locked and only games still without a spread (and without picks) are filled
 - `/api/brackets/{id}/pull-teams` — Fill empty first-round slots from ESPN (e.g. after the First Four)
 - `/api/brackets/{id}/update-scores` — Pull scores from ESPN for a round

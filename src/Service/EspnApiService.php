@@ -201,16 +201,15 @@ class EspnApiService implements ResetInterface
     /**
      * Refresh spreads for a round from ESPN. Lines keep updating until the
      * round's first pick; after that the round is locked so every pick is
-     * judged against the line it was made on.
+     * judged against the line it was made on. A locked round still fills in
+     * games that have no spread and no picks yet (matchups whose teams were
+     * set later, e.g. after the First Four), without touching any other line.
      * @return array{matched: int, total: int, unmatched: array, locked: bool}
      */
     public function pullSpreads(Bracket $bracket, int $roundNumber): array
     {
         $games = $this->gameRepository->findByBracketAndRound($bracket, $roundNumber);
-
-        if ($this->gameRepository->roundHasPicks($bracket, $roundNumber)) {
-            return ['matched' => 0, 'total' => count($games), 'unmatched' => [], 'locked' => true];
-        }
+        $locked = $this->gameRepository->roundHasPicks($bracket, $roundNumber);
 
         $matched = 0;
         $unmatched = [];
@@ -220,6 +219,9 @@ class EspnApiService implements ResetInterface
                 continue;
             }
             if (!$game->getTeam1() || !$game->getTeam2()) {
+                continue;
+            }
+            if ($locked && ($game->getSpread() !== null || !$game->getPicks()->isEmpty())) {
                 continue;
             }
 
@@ -256,7 +258,7 @@ class EspnApiService implements ResetInterface
 
         $this->em->flush();
 
-        return ['matched' => $matched, 'total' => count($games), 'unmatched' => $unmatched, 'locked' => false];
+        return ['matched' => $matched, 'total' => count($games), 'unmatched' => $unmatched, 'locked' => $locked];
     }
 
     /**
@@ -464,16 +466,21 @@ class EspnApiService implements ResetInterface
         $homeFavored = $homeOdds['favorite'] ?? false;
         $favoredName = $homeFavored ? $homeTeamName : $awayTeamName;
 
-        $game->setSpread($spread);
-
         if ($favoredName === $team1Name) {
-            $game->setSpreadTeam($game->getTeam1());
+            $favored = $game->getTeam1();
         } elseif ($favoredName === $team2Name) {
-            $game->setSpreadTeam($game->getTeam2());
+            $favored = $game->getTeam2();
         } else {
-            // Fallback: negative spread means home team is favored
-            $game->setSpreadTeam($game->getTeam1());
+            // ESPN's favourite matches neither team: don't guess, leave the line as it is.
+            $this->logger->warning('ESPN favourite "{name}" matches neither team in game {game}', [
+                'name' => $favoredName,
+                'game' => $game->getId(),
+            ]);
+            return false;
         }
+
+        $game->setSpread($spread);
+        $game->setSpreadTeam($favored);
 
         return true;
     }

@@ -3,6 +3,7 @@
 namespace App\Tests\Functional;
 
 use App\Entity\Bracket;
+use App\Entity\Setting;
 use App\Service\TournamentCalendar;
 use App\Tests\Support\FakeEspn;
 
@@ -15,6 +16,13 @@ class BracketCreateGateTest extends WebTestCase
         parent::setUp();
         FakeEspn::reset();
         $this->year = static::getContainer()->get(TournamentCalendar::class)->activeYear();
+
+        // Start with no pairing whatever the dev database holds (rolled back after each test).
+        $pairing = $this->em->find(Setting::class, 'final_four_east_opponent_' . $this->year);
+        if ($pairing) {
+            $this->em->remove($pairing);
+            $this->em->flush();
+        }
     }
 
     private function openTournament(): void

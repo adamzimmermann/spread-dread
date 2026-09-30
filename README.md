@@ -94,6 +94,12 @@ ddev exec php bin/console cache:clear
 5. **Update scores** — pull final scores from ESPN; the app evaluates picks against the spread and advances winners to the next round
 6. **Track the score** — a sticky scoreboard shows each player's running total
 
+## Each tournament
+
+1. **Selection Sunday:** in `/admin`, set which region plays East in the Final Four. Brackets open once this is set and ESPN lists the field.
+2. **After the First Four (Tue/Wed):** the sync job fills the four play-in slots; the "Load missing teams" button on a bracket does the same on demand.
+3. **Before each round's first pick:** spreads keep refreshing (sync or "Pull Spreads"). The first pick in a round locks that round's spreads.
+
 ## Deployment
 
 Deploys automatically to Dreamhost via GitHub Actions on push to `main`. The workflow SSHs into the server, pulls the latest code, installs dependencies, runs migrations, and compiles assets.

@@ -4,7 +4,6 @@ namespace App\Service;
 
 use App\Entity\Bracket;
 use App\Entity\Game;
-use App\Entity\Round;
 use App\Entity\Team;
 use App\Repository\TeamRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -110,15 +109,6 @@ class BracketBuilderService
                     $allGames[1][] = $r64;
                 }
             }
-        }
-
-        // Create Round entities
-        for ($r = 1; $r <= 6; $r++) {
-            $round = new Round();
-            $round->setYear($year);
-            $round->setRoundNumber($r);
-            $round->setName(Round::getRoundName($r));
-            $this->em->persist($round);
         }
 
         $this->em->flush();

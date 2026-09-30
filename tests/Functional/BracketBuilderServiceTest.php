@@ -149,4 +149,17 @@ class BracketBuilderServiceTest extends WebTestCase
         $this->assertSame([1 => 'East', 2 => 'South'], $byFinalFour[1]);
         $this->assertSame([1 => 'West', 2 => 'Midwest'], $byFinalFour[2]);
     }
+
+    public function testBuildingDoesNotWriteRoundRows(): void
+    {
+        $conn = $this->em->getConnection();
+        $bracket = $this->createBracket($this->createUser('bb_norounds_p1'), $this->createUser('bb_norounds_p2'));
+        static::getContainer()->get(BracketBuilderService::class)->buildBracket($bracket);
+
+        $this->assertFalse(
+            $conn->createSchemaManager()->tablesExist(['round']),
+            'The round table is dropped',
+        );
+        $this->assertSame('Sweet 16', Game::nameForRound(3));
+    }
 }

@@ -177,7 +177,7 @@ class BracketController extends AbstractController
         for ($r = 1; $r <= 6; $r++) {
             $roundGames = $gameRepository->findByBracketAndRound($bracket, $r);
             if (!empty($roundGames)) {
-                $availableRounds[$r] = \App\Entity\Round::getRoundName($r);
+                $availableRounds[$r] = \App\Entity\Game::nameForRound($r);
             }
         }
 

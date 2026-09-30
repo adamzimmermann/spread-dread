@@ -98,4 +98,40 @@ class BracketBuilderServiceTest extends WebTestCase
         }
         $this->assertSame(3, $regionCounts['National']);
     }
+
+    public function testEachFinalFourGameIsFedByPositionsOneAndTwo(): void
+    {
+        $bracket = $this->createBracket($this->createUser('bb_e8pos_p1'), $this->createUser('bb_e8pos_p2'));
+        static::getContainer()->get(BracketBuilderService::class)->buildBracket($bracket);
+
+        $feeders = [];
+        foreach ($this->em->getRepository(Game::class)->findBy(['bracket' => $bracket, 'roundNumber' => 4]) as $e8) {
+            $feeders[$e8->getNextGame()->getBracketPosition()][] = $e8->getBracketPosition();
+        }
+
+        foreach ($feeders as $ffPosition => $positions) {
+            sort($positions);
+            $this->assertSame([1, 2], $positions, "Final Four game $ffPosition");
+        }
+    }
+
+    public function testBothRegionalChampionsReachTheFinalFour(): void
+    {
+        $bracket = $this->createBracket($this->createUser('bb_e8adv_p1'), $this->createUser('bb_e8adv_p2'));
+        static::getContainer()->get(BracketBuilderService::class)->buildBracket($bracket);
+        $scoring = static::getContainer()->get(\App\Service\ScoringService::class);
+
+        foreach ($this->em->getRepository(Game::class)->findBy(['bracket' => $bracket, 'roundNumber' => 4]) as $e8) {
+            $champ = $this->createTeam($e8->getRegion() . ' Champ', 1, $e8->getRegion());
+            $e8->setTeam1($champ)->setTeam2($this->createTeam($e8->getRegion() . ' Runner', 2, $e8->getRegion()));
+            $e8->setTeam1Score(70)->setTeam2Score(60)->setWinner($champ)->setIsComplete(true);
+            $this->em->flush();
+            $scoring->advanceWinner($e8);
+        }
+
+        foreach ($this->em->getRepository(Game::class)->findBy(['bracket' => $bracket, 'roundNumber' => 5]) as $ff) {
+            $this->assertNotNull($ff->getTeam1(), 'Final Four team1');
+            $this->assertNotNull($ff->getTeam2(), 'Final Four team2');
+        }
+    }
 }

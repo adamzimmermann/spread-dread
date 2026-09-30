@@ -68,7 +68,8 @@ class BracketBuilderService
 
             foreach ($regions as $regionIndex => $region) {
                 // Elite 8: 1 game per region -> feeds to Final Four
-                $e8 = $this->createGame($bracket, 4, $region, 1);
+                // First region of the pair feeds team1, second feeds team2.
+                $e8 = $this->createGame($bracket, 4, $region, $regionIndex + 1);
                 $e8->setNextGame($ffGame);
                 $allGames[4][] = $e8;
 

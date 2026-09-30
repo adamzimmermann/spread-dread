@@ -171,4 +171,24 @@ class AdminControllerTest extends WebTestCase
         $refetched = static::getContainer()->get(InviteRepository::class)->find($inviteId);
         $this->assertSame(InviteStatus::Revoked, $refetched->getStatus());
     }
+
+    public function testInvitesListShowsOnlyPendingInvites(): void
+    {
+        $admin = $this->createUser('adm_pending_admin', 'password', null, true);
+        $service = static::getContainer()->get(InviteService::class);
+        $service->create('adm.pending@example.com', $admin);
+        $service->create('adm.accepted@example.com', $admin)->setStatus(InviteStatus::Accepted);
+        $service->create('adm.revoked@example.com', $admin)->setStatus(InviteStatus::Revoked);
+        $service->create('adm.expired@example.com', $admin)->setExpiresAt(new \DateTimeImmutable('-1 day'));
+        $this->em->flush();
+        $this->loginViaForm('adm_pending_admin');
+
+        $this->client->request('GET', '/admin');
+        $this->assertResponseIsSuccessful();
+        $body = $this->client->getResponse()->getContent();
+        $this->assertStringContainsString('adm.pending@example.com', $body);
+        $this->assertStringNotContainsString('adm.accepted@example.com', $body);
+        $this->assertStringNotContainsString('adm.revoked@example.com', $body);
+        $this->assertStringNotContainsString('adm.expired@example.com', $body);
+    }
 }

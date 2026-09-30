@@ -78,6 +78,25 @@ class PasswordResetTest extends WebTestCase
         $this->assertResponseIsSuccessful();
     }
 
+    public function testResettingRecordsLastLoginAt(): void
+    {
+        $user = $this->createUser('pr_lastlogin_user', 'oldpassword', 'pr.lastlogin@example.com');
+        $userId = $user->getId();
+        $token = $this->requestToken('pr.lastlogin@example.com');
+
+        $crawler = $this->client->request('GET', "/reset-password/$token");
+        $form = $crawler->selectButton('Set new password')->form([
+            'password' => 'newpassword123',
+            'password_confirm' => 'newpassword123',
+        ]);
+        $this->client->submit($form);
+        $this->assertResponseRedirects('/brackets');
+
+        // A successful reset signs the user in, so it counts as a login.
+        $refreshedUser = $this->em->find(\App\Entity\User::class, $userId);
+        $this->assertNotNull($refreshedUser->getLastLoginAt());
+    }
+
     public function testTokenIsSingleUse(): void
     {
         $this->createUser('pr_once_user', 'oldpassword', 'pr.once@example.com');

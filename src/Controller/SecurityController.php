@@ -4,7 +4,6 @@ namespace App\Controller;
 
 use App\Repository\UserRepository;
 use App\Security\SessionAuthenticator;
-use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -22,7 +21,7 @@ class SecurityController extends AbstractController
     }
 
     #[Route('/login', name: 'app_login', methods: ['GET', 'POST'])]
-    public function login(Request $request, UserRepository $userRepository, SessionAuthenticator $auth, EntityManagerInterface $em): Response
+    public function login(Request $request, UserRepository $userRepository, SessionAuthenticator $auth): Response
     {
         if ($auth->getUser()) {
             return $this->redirectToRoute('app_bracket_index');
@@ -42,8 +41,6 @@ class SecurityController extends AbstractController
 
                 if ($user && $user->isActive() && password_verify($password, $user->getPassword())) {
                     $auth->login($user);
-                    $user->setLastLoginAt(new \DateTimeImmutable());
-                    $em->flush();
                     return $this->redirectToRoute('app_bracket_index');
                 }
 

@@ -62,9 +62,9 @@
 </section>
 
 <section class="bg-white rounded-lg shadow p-4 overflow-x-auto">
-    <h2 class="font-semibold text-gray-800 mb-3">Invites ({{ invites|length }})</h2>
+    <h2 class="font-semibold text-gray-800 mb-3">Pending invites ({{ invites|length }})</h2>
     {% if invites is empty %}
-        <p class="text-gray-500 text-sm">No invitations yet.</p>
+        <p class="text-gray-500 text-sm">No pending invitations.</p>
     {% else %}
     <table class="w-full text-sm">
         <thead class="text-left text-gray-500 border-b">

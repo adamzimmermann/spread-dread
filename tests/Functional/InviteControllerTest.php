@@ -47,6 +47,8 @@ class InviteControllerTest extends WebTestCase
         $user = static::getContainer()->get(UserRepository::class)->findByUsername('inv_accept_user');
         $this->assertNotNull($user);
         $this->assertSame('inv.accept@example.com', $user->getEmail());
+        // Accepting signs the user in, so it counts as their first login.
+        $this->assertNotNull($user->getLastLoginAt());
 
         // The test client rebuilds the container (and its EntityManager) between
         // requests, so the $invite reference obtained before the requests above

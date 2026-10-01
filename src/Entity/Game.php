@@ -258,6 +258,19 @@ class Game
 
     public function getRoundName(): string
     {
-        return Round::getRoundName($this->roundNumber);
+        return self::nameForRound($this->roundNumber);
+    }
+
+    public static function nameForRound(int $roundNumber): string
+    {
+        return match ($roundNumber) {
+            1 => 'Round of 64',
+            2 => 'Round of 32',
+            3 => 'Sweet 16',
+            4 => 'Elite 8',
+            5 => 'Final Four',
+            6 => 'Championship',
+            default => 'Round ' . $roundNumber,
+        };
     }
 }

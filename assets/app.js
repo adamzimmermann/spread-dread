@@ -201,12 +201,6 @@ function setSpread(gameId) {
 function pullSpreads(bracketId, round) {
     var btn = document.getElementById('btn-spreads');
 
-    if (btn.dataset.hasSpreads === '1' && btn.dataset.hasPicks === '1') {
-        if (!confirm('Spreads have already been pulled and picks have been made for this round. Pulling again may change spreads and affect pick results. Continue?')) {
-            return;
-        }
-    }
-
     btn.classList.add('loading');
     btn.textContent = 'Pulling...';
 
@@ -216,6 +210,9 @@ function pullSpreads(bracketId, round) {
         if (data.error) {
             alert(data.error);
         } else {
+            if (data.result && data.result.locked && data.result.matched === 0) {
+                alert('Picks have been made in this round, so spreads are locked.');
+            }
             updateGameCards(data.cards);
             updateScoreCard(data.scores);
         }
@@ -229,70 +226,25 @@ function pullSpreads(bracketId, round) {
     });
 }
 
-// --- Pull Teams from API (ESPN) ---
+// --- Load missing first-round teams (e.g. after the First Four) ---
 
 function pullTeams(bracketId) {
     var btn = document.getElementById('btn-pull-teams');
     btn.classList.add('loading');
-    btn.textContent = 'Pulling...';
-
-    var errorEl = document.getElementById('api-error');
-    errorEl.classList.add('hidden');
+    btn.textContent = 'Loading...';
 
     postForm('/api/brackets/' + bracketId + '/pull-teams', {})
     .then(function(response) { return response.json(); })
     .then(function(data) {
-        if (data.error) {
-            errorEl.textContent = data.error;
-            errorEl.classList.remove('hidden');
-            return;
+        if (data.result && data.result.success === false) {
+            alert(data.result.error || 'Teams could not be loaded.');
         }
-
-        var teams = data.teams || [];
-        if (teams.length === 0) {
-            errorEl.textContent = 'No tournament teams found. Enter teams manually.';
-            errorEl.classList.remove('hidden');
-            return;
-        }
-
-        // Auto-fill the form inputs with ESPN data
-        var filled = 0;
-        teams.forEach(function(team) {
-            var teamInput = document.getElementById('team_' + team.region + '_' + team.seed);
-            var apiInput = document.getElementById('apiname_' + team.region + '_' + team.seed);
-
-            if (teamInput) {
-                teamInput.value = team.name;
-                filled++;
-            }
-            if (apiInput) {
-                apiInput.value = team.name;
-            }
-        });
-
-        // Store ESPN event IDs as hidden fields for R64 game matching
-        var matchups = data.matchups || [];
-        var eventIdContainer = document.getElementById('eventid-fields');
-        if (eventIdContainer) {
-            eventIdContainer.innerHTML = '';
-            matchups.forEach(function(m) {
-                var input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'eventid_' + m.region + '_' + m.seed1 + '_' + m.seed2;
-                input.value = m.event_id;
-                eventIdContainer.appendChild(input);
-            });
-        }
-
-        btn.textContent = filled + ' teams loaded!';
-        setTimeout(function() { btn.textContent = 'Pull Teams from API'; }, 2000);
+        window.location.reload();
     })
     .catch(function(err) {
-        errorEl.textContent = 'Error: ' + err.message;
-        errorEl.classList.remove('hidden');
-    })
-    .finally(function() {
+        alert('Error: ' + err.message);
         btn.classList.remove('loading');
+        btn.textContent = 'Load missing teams';
     });
 }
 

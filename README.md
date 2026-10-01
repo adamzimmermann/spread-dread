@@ -87,16 +87,30 @@ ddev exec php bin/console cache:clear
 
 ## How It Works
 
-1. **Create a bracket** — set the tournament year and assign two players
-2. **Pull teams** — fetch the 68-team field from ESPN, or enter teams manually
+1. **Selection Sunday** — an admin sets the Final Four pairing (which region plays East) in `/admin`. The tournament year is chosen automatically.
+2. **Create a bracket** — brackets open once the pairing is set and ESPN lists the field; pick an opponent and the first-round teams load automatically. "Load missing teams" fills the First Four slots once those games are decided.
 3. **Make picks** — players take turns picking teams; the opponent automatically gets the other team
 4. **Pull spreads** — fetch point spreads from ESPN for each round
 5. **Update scores** — pull final scores from ESPN; the app evaluates picks against the spread and advances winners to the next round
 6. **Track the score** — a sticky scoreboard shows each player's running total
 
+## Each tournament
+
+1. **Selection Sunday:** in `/admin`, set which region plays East in the Final Four. Brackets open once this is set and ESPN lists the field.
+2. **After the First Four (Tue/Wed):** the sync job fills the four play-in slots; the "Load missing teams" button on a bracket does the same on demand.
+3. **Before each round's first pick:** spreads keep refreshing (sync or "Pull Spreads"). The first pick in a round locks the spreads already set in that round; games that get their teams later (First Four winners, the second semifinal) still receive their first line.
+
 ## Deployment
 
 Deploys automatically to Dreamhost via GitHub Actions on push to `main`. The workflow SSHs into the server, pulls the latest code, installs dependencies, runs migrations, and compiles assets.
+
+### Scheduled sync (March–April)
+
+`app:tournament:sync` pulls missing teams, spreads (refreshed for rounds with no picks yet, filled in for games still without a line), and final scores for every bracket of the current tournament. Add it in the Dreamhost panel (Advanced → Cron Jobs) as the site's user:
+
+    0 * * 3,4 *   cd <app path> && php bin/console app:tournament:sync >> var/log/sync.log 2>&1
+
+Cron may use a different PHP than your shell; if the log shows a version error, use the full path shown by `which php` in an SSH session. Outside March and April the job doesn't run; the buttons on each bracket page still work at any time.
 
 ## Tech Stack
 

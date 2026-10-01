@@ -44,15 +44,27 @@
     {% endfor %}
 </div>
 
+{% if missingTeams > 0 %}
+<button type="button" id="btn-pull-teams" onclick="pullTeams({{ bracket.id }})"
+        class="w-full mb-4 bg-amber-50 border border-amber-300 text-amber-800 px-3 py-2 rounded text-sm font-medium hover:bg-amber-100 cursor-pointer">
+    Load missing teams ({{ missingTeams }})
+</button>
+{% endif %}
+
 {# Action buttons #}
 <div class="flex gap-2 mb-4">
+    {% if roundHasPicks and not roundHasMissingSpreads %}
+    <button id="btn-spreads" disabled title="Picks have been made in this round, so spreads no longer change."
+            class="flex-1 bg-gray-100 border border-gray-200 text-gray-400 px-3 py-2 rounded text-sm font-medium cursor-not-allowed">
+        Spreads locked
+    </button>
+    {% else %}
     <button onclick="pullSpreads({{ bracket.id }}, {{ currentRound }})"
             class="flex-1 bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded text-sm font-medium hover:bg-gray-50 cursor-pointer"
-            id="btn-spreads"
-            data-has-spreads="{{ roundHasSpreads ? '1' : '0' }}"
-            data-has-picks="{{ roundHasPicks ? '1' : '0' }}">
+            id="btn-spreads">
         Pull Spreads
     </button>
+    {% endif %}
     <button onclick="updateScores({{ bracket.id }}, {{ currentRound }})"
             class="flex-1 bg-white border border-gray-300 text-gray-700 px-3 py-2 rounded text-sm font-medium hover:bg-gray-50 cursor-pointer"
             id="btn-scores">

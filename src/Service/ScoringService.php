@@ -128,4 +128,18 @@ class ScoringService
             'player2_name' => $bracket->getPlayer2Name(),
         ];
     }
+
+    /**
+     * Evaluate picks and advance winners for every completed game in a round.
+     * Safe to repeat: evaluatePicks() skips picks already judged.
+     */
+    public function settleRound(Bracket $bracket, int $roundNumber): void
+    {
+        foreach ($this->gameRepository->findByBracketAndRound($bracket, $roundNumber) as $game) {
+            if ($game->isComplete()) {
+                $this->evaluatePicks($game);
+                $this->advanceWinner($game);
+            }
+        }
+    }
 }

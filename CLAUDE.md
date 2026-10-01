@@ -60,16 +60,16 @@ This is a Symfony 7 app for two players to compete on NCAA Tournament brackets u
 
 **Bracket** is the aggregate root. Each bracket owns 63 **Game** entities forming a tournament tree via `Game.nextGame` self-references. Games link to **Team** entities (nullable until teams are assigned/advanced). **Pick** tracks which player chose which team per game. Picks have a nullable `isWinner` field set after spread evaluation.
 
-The bracket tree wiring: odd `bracketPosition` feeds into `team1` of the next game, even feeds into `team2`. Region pairs East/West and South/Midwest merge in the Final Four.
+The bracket tree wiring: odd `bracketPosition` feeds into `team1` of the next game, even feeds into `team2`. Which regions meet in the Final Four is set per year by an admin (`TournamentCalendar`); brackets can't be created until it is.
 
-**Round** stores per-year round metadata (round number, name, start/end dates). **Setting** is a simple key/value store (`setting_key`/`setting_value`) for app-wide configuration.
+**Setting** is a simple key/value store (`setting_key`/`setting_value`) for app-wide configuration.
 
 ### Key Services
 
 - **BracketBuilderService** — Creates the 63-game bracket structure (32+16+8+4+2+1) with correct NCAA seed matchups and `nextGame` wiring.
 - **ScoringService** — `evaluatePicks()` checks if picked team covered the spread. `advanceWinner()` populates the next game's team slot. `calculateScores()` returns per-player totals.
-- **EspnApiService** — Pulls teams, spreads, and scores from ESPN's API. Matches games via event IDs stored on Game entities.
-- **OddsApiService** — Pulls spreads and scores from The Odds API (`basketball_ncaab`), matches to games via fuzzy team name normalization.
+- **EspnApiService** — Pulls teams, spreads and scores from ESPN. Queries whole months (`dates=YYYYMM`); ESPN rejects date ranges. Matches games via event IDs stored on Game entities.
+- **TournamentCalendar** — The current tournament year (the year of the next March; users never choose it) and the per-year Final Four pairing.
 
 ### Authentication
 
@@ -93,6 +93,10 @@ break-glass CLI path and is how the first admin is created:
 Invite and password-reset tokens are stored as SHA-256 hashes; the raw token exists
 only in the email. Every form and AJAX call carries a CSRF token under the id `app`.
 
+### Tournament data
+
+`app:tournament:sync` (cron, hourly in March–April) fills missing teams, refreshes spreads for rounds without picks, and pulls final scores for every bracket of the current year. Tests never call ESPN: `tests/Support/FakeEspn.php` is wired as the HTTP client's mock response factory in the test environment.
+
 ### Frontend
 
 Tailwind CSS compiled via `symfonycasts/tailwind-bundle` (standalone Tailwind CLI, no Node.js). CSS source in `assets/styles/app.css`, JS in `assets/app.js`, served via Symfony AssetMapper. Run `tailwind:build` after changing Tailwind classes. Vanilla JS using fetch API for AJAX interactions (picks, spreads, scores). Pick assignment returns rendered Twig partial HTML that replaces the game card in-place.
@@ -102,7 +106,6 @@ Tailwind CSS compiled via `symfonycasts/tailwind-bundle` (standalone Tailwind CL
 All AJAX endpoints are POST and return JSON (except pick assignment which returns HTML):
 - `/api/games/{id}/pick` — Assign pick + auto-assign opponent
 - `/api/games/{id}/spread` — Set spread, re-evaluates picks if game complete
-- `/api/games/{id}/score` — Set scores, determine winner, evaluate picks, advance winner
-- `/api/brackets/{id}/pull-spreads` — Pull spreads from ESPN/Odds API for a round
-- `/api/brackets/{id}/pull-teams` — Pull tournament teams from ESPN
-- `/api/brackets/{id}/update-scores` — Pull scores from ESPN/Odds API for a round
+- `/api/brackets/{id}/pull-spreads` — Refresh spreads for a round; once the round has a pick, existing spreads are locked and only games still without a spread (and without picks) are filled
+- `/api/brackets/{id}/pull-teams` — Fill empty first-round slots from ESPN (e.g. after the First Four)
+- `/api/brackets/{id}/update-scores` — Pull scores from ESPN for a round

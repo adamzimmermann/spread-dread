@@ -5,10 +5,12 @@ namespace App\Controller;
 use App\Entity\Invite;
 use App\Entity\User;
 use App\Entity\UserStatus;
+use App\Repository\BracketRepository;
 use App\Repository\InviteRepository;
 use App\Repository\UserRepository;
 use App\Security\SessionAuthenticator;
 use App\Service\InviteService;
+use App\Service\TournamentCalendar;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -22,10 +24,17 @@ class AdminController extends AbstractController
         SessionAuthenticator $auth,
         UserRepository $userRepository,
         InviteRepository $inviteRepository,
+        TournamentCalendar $calendar,
+        BracketRepository $bracketRepository,
     ): Response {
         $auth->requireAdmin();
+        $year = $calendar->activeYear();
+        $eastOpponent = $calendar->eastOpponent($year);
 
         return $this->render('admin/dashboard.html.twig', [
+            'tournamentYear' => $year,
+            'eastOpponent' => $eastOpponent,
+            'pairingLocked' => $eastOpponent !== null && $bracketRepository->existsForYear($year),
             'users' => $userRepository->findAllForAdmin(),
             'invites' => $inviteRepository->findPendingNewestFirst(),
         ]);
@@ -107,6 +116,41 @@ class AdminController extends AbstractController
 
         $inviteService->revoke($invite);
         $this->addFlash('success', 'Invitation revoked.');
+
+        return $this->redirectToRoute('app_admin_dashboard');
+    }
+
+    #[Route('/admin/tournament', name: 'app_admin_tournament', methods: ['POST'])]
+    public function setTournament(
+        Request $request,
+        SessionAuthenticator $auth,
+        TournamentCalendar $calendar,
+        BracketRepository $bracketRepository,
+    ): Response {
+        $auth->requireAdmin();
+        $this->assertCsrf($request);
+
+        $year = (int) $request->request->get('year');
+        $activeYear = $calendar->activeYear();
+        if ($year !== $activeYear) {
+            $this->addFlash('error', "The Final Four pairing can only be set for $activeYear.");
+            return $this->redirectToRoute('app_admin_dashboard');
+        }
+
+        $region = (string) $request->request->get('east_opponent');
+        $current = $calendar->eastOpponent($year);
+        if ($current !== null && $region !== $current && $bracketRepository->existsForYear($year)) {
+            // Every bracket's Final Four was wired with the stored pairing.
+            $this->addFlash('error', "The Final Four pairing cannot change: $year brackets already exist.");
+            return $this->redirectToRoute('app_admin_dashboard');
+        }
+
+        try {
+            $calendar->setEastOpponent($year, $region);
+            $this->addFlash('success', "Final Four pairing saved for $year.");
+        } catch (\InvalidArgumentException) {
+            $this->addFlash('error', 'Pick which region plays East.');
+        }
 
         return $this->redirectToRoute('app_admin_dashboard');
     }

@@ -8,12 +8,17 @@ use App\Entity\Team;
 use App\Repository\GameRepository;
 use App\Repository\TeamRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Symfony\Contracts\Service\ResetInterface;
 
-class EspnApiService
+class EspnApiService implements ResetInterface
 {
     private const SCOREBOARD_URL = 'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard';
     private const SUMMARY_URL = 'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/summary';
+
+    /** First-round teams needed before brackets open; up to four slots can wait on the First Four. */
+    public const MIN_FIELD_SIZE = 60;
 
     private const SEED_MATCHUPS = [
         [1, 16], [8, 9], [5, 12], [4, 13],
@@ -25,8 +30,13 @@ class EspnApiService
         private EntityManagerInterface $em,
         private GameRepository $gameRepository,
         private TeamRepository $teamRepository,
+        private LoggerInterface $logger,
     ) {
     }
+
+    /** @var array<int, array> tournament events per year, fetched once per request/command run */
+    private array $eventsByYear = [];
+    private array $summaries = [];
 
     /**
      * Populate a bracket's R64 games with teams fetched from ESPN.
@@ -112,7 +122,7 @@ class EspnApiService
      */
     public function fetchTournamentTeams(int $year): array
     {
-        $events = $this->fetchFirstRoundEvents($year);
+        $events = $this->fetchTournamentEvents($year);
 
         if (empty($events)) {
             return ['teams' => [], 'matchups' => [], 'error' => 'No tournament games found for ' . $year];
@@ -146,7 +156,10 @@ class EspnApiService
                 $teamData = $competitor['team'] ?? [];
                 $teamName = $teamData['displayName'] ?? $teamData['shortDisplayName'] ?? '';
 
-                if (!$seed || !$teamName) {
+                // Before the First Four is played ESPN may list a placeholder
+                // ("TBD", or "Team A/Team B"). Leave the slot empty; a later
+                // pull fills it.
+                if (!$seed || !$teamName || stripos($teamName, 'TBD') !== false || str_contains($teamName, '/')) {
                     continue;
                 }
 
@@ -186,22 +199,29 @@ class EspnApiService
     }
 
     /**
-     * Pull spreads from ESPN for games in a bracket round.
-     * Uses per-event summary calls to get pickcenter spread data.
-     * @return array{matched: int, total: int, unmatched: array}
+     * Refresh spreads for a round from ESPN. Lines keep updating until the
+     * round's first pick; after that the round is locked so every pick is
+     * judged against the line it was made on. A locked round still fills in
+     * games that have no spread and no picks yet (matchups whose teams were
+     * set later, e.g. after the First Four), without touching any other line.
+     * @return array{matched: int, total: int, unmatched: array, locked: bool}
      */
     public function pullSpreads(Bracket $bracket, int $roundNumber): array
     {
         $games = $this->gameRepository->findByBracketAndRound($bracket, $roundNumber);
+        $locked = $this->gameRepository->roundHasPicks($bracket, $roundNumber);
 
         $matched = 0;
         $unmatched = [];
 
         foreach ($games as $game) {
-            if ($game->getSpread() !== null) {
+            if ($game->isComplete()) {
                 continue;
             }
             if (!$game->getTeam1() || !$game->getTeam2()) {
+                continue;
+            }
+            if ($locked && ($game->getSpread() !== null || !$game->getPicks()->isEmpty())) {
                 continue;
             }
 
@@ -221,20 +241,24 @@ class EspnApiService
 
             $summary = $this->fetchEventSummary($eventId);
             if (!$summary) {
-                $unmatched[] = $game->getId();
+                if ($game->getSpread() === null) {
+                    $unmatched[] = $game->getId();
+                }
                 continue;
             }
 
             if ($this->applySpread($game, $summary)) {
                 $matched++;
             } else {
-                $unmatched[] = $game->getId();
+                if ($game->getSpread() === null) {
+                    $unmatched[] = $game->getId();
+                }
             }
         }
 
         $this->em->flush();
 
-        return ['matched' => $matched, 'total' => count($games), 'unmatched' => $unmatched];
+        return ['matched' => $matched, 'total' => count($games), 'unmatched' => $unmatched, 'locked' => $locked];
     }
 
     /**
@@ -246,8 +270,13 @@ class EspnApiService
         $games = $this->gameRepository->findByBracketAndRound($bracket, $roundNumber);
         $year = $bracket->getYear();
 
+        $pending = array_filter($games, fn (Game $g) => !$g->isComplete() && $g->getTeam1() && $g->getTeam2());
+        if ($pending === []) {
+            return ['updated' => 0, 'unmatched' => []];
+        }
+
         // Fetch scoreboard events for the tournament
-        $events = $this->fetchTournamentScoreboard($year);
+        $events = $this->fetchTournamentEvents($year);
 
         // Index events by ID for quick lookup
         $eventsById = [];
@@ -301,57 +330,63 @@ class EspnApiService
         return ['updated' => $updated, 'unmatched' => $unmatched];
     }
 
-    private function fetchFirstRoundEvents(int $year): array
+    /**
+     * Every NCAA tournament event for $year. ESPN rejects date ranges
+     * (HTTP 400, observed 2026-09-30) but accepts whole months, and the
+     * tournament always falls in March and April.
+     */
+    public function fetchTournamentEvents(int $year): array
     {
-        $startDate = $year . '0318';
-        $endDate = $year . '0322';
-
-        try {
-            $response = $this->httpClient->request('GET', self::SCOREBOARD_URL, [
-                'query' => [
-                    'dates' => $startDate . '-' . $endDate,
-                    'groups' => 100,
-                    'limit' => 100,
-                ],
-            ]);
-            $data = $response->toArray();
-            return $data['events'] ?? [];
-        } catch (\Exception $e) {
-            return [];
+        if (isset($this->eventsByYear[$year])) {
+            return $this->eventsByYear[$year];
         }
+
+        $events = [];
+        foreach (['03', '04'] as $month) {
+            try {
+                $data = $this->httpClient->request('GET', self::SCOREBOARD_URL, [
+                    'query' => ['dates' => $year . $month, 'groups' => 100, 'limit' => 300],
+                ])->toArray();
+            } catch (\Throwable $e) {
+                $this->logger->warning('ESPN scoreboard request failed', ['month' => $year . $month, 'error' => $e->getMessage()]);
+                return []; // Not cached, so the next call retries.
+            }
+
+            foreach ($data['events'] ?? [] as $event) {
+                $headline = $event['competitions'][0]['notes'][0]['headline'] ?? '';
+                if (str_contains($headline, "Men's Basketball Championship")) {
+                    $events[] = $event;
+                }
+            }
+        }
+
+        return $this->eventsByYear[$year] = $events;
     }
 
-    /**
-     * Fetch scoreboard events across the full tournament date range.
-     */
-    private function fetchTournamentScoreboard(int $year): array
+    public function reset(): void
     {
-        $startDate = $year . '0318';
-        $endDate = $year . '0410';
+        $this->eventsByYear = [];
+        $this->summaries = [];
+    }
 
-        try {
-            $response = $this->httpClient->request('GET', self::SCOREBOARD_URL, [
-                'query' => [
-                    'dates' => $startDate . '-' . $endDate,
-                    'groups' => 100,
-                    'limit' => 200,
-                ],
-            ]);
-            $data = $response->toArray();
-            return $data['events'] ?? [];
-        } catch (\Exception $e) {
-            return [];
-        }
+    public function tournamentFieldIsSet(int $year): bool
+    {
+        return count($this->fetchTournamentTeams($year)['teams']) >= self::MIN_FIELD_SIZE;
     }
 
     private function fetchEventSummary(string $eventId): ?array
     {
+        if (isset($this->summaries[$eventId])) {
+            return $this->summaries[$eventId];
+        }
+
         try {
             $response = $this->httpClient->request('GET', self::SUMMARY_URL, [
                 'query' => ['event' => $eventId],
             ]);
-            return $response->toArray();
+            return $this->summaries[$eventId] = $response->toArray();
         } catch (\Exception $e) {
+            $this->logger->warning('ESPN summary request failed', ['event' => $eventId, 'error' => $e->getMessage()]);
             return null;
         }
     }
@@ -361,7 +396,7 @@ class EspnApiService
      */
     private function findEspnEventId(Game $game, int $year): ?string
     {
-        $events = $this->fetchTournamentScoreboard($year);
+        $events = $this->fetchTournamentEvents($year);
 
         $team1Name = strtolower($game->getTeam1()->getName());
         $team2Name = strtolower($game->getTeam2()->getName());
@@ -431,16 +466,21 @@ class EspnApiService
         $homeFavored = $homeOdds['favorite'] ?? false;
         $favoredName = $homeFavored ? $homeTeamName : $awayTeamName;
 
-        $game->setSpread($spread);
-
         if ($favoredName === $team1Name) {
-            $game->setSpreadTeam($game->getTeam1());
+            $favored = $game->getTeam1();
         } elseif ($favoredName === $team2Name) {
-            $game->setSpreadTeam($game->getTeam2());
+            $favored = $game->getTeam2();
         } else {
-            // Fallback: negative spread means home team is favored
-            $game->setSpreadTeam($game->getTeam1());
+            // ESPN's favourite matches neither team: don't guess, leave the line as it is.
+            $this->logger->warning('ESPN favourite "{name}" matches neither team in game {game}', [
+                'name' => $favoredName,
+                'game' => $game->getId(),
+            ]);
+            return false;
         }
+
+        $game->setSpread($spread);
+        $game->setSpreadTeam($favored);
 
         return true;
     }

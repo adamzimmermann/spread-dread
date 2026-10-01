@@ -4,7 +4,6 @@ namespace App\Service;
 
 use App\Entity\Bracket;
 use App\Entity\Game;
-use App\Entity\Round;
 use App\Entity\Team;
 use App\Repository\TeamRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -25,7 +24,11 @@ class BracketBuilderService
     ) {
     }
 
-    public function buildBracket(Bracket $bracket): void
+    /**
+     * @param array{0: array{0: string, 1: string}, 1: array{0: string, 1: string}} $finalFourPairs
+     *        Regions meeting in Final Four game 1 and game 2 (see TournamentCalendar::finalFourPairs()).
+     */
+    public function buildBracket(Bracket $bracket, array $finalFourPairs = TournamentCalendar::DEFAULT_PAIRS): void
     {
         $year = $bracket->getYear();
         $teams = $this->teamRepository->findByYear($year);
@@ -51,13 +54,9 @@ class BracketBuilderService
         $ff2->setNextGame($championship);
         $allGames[5] = [$ff1, $ff2];
 
-        // Rounds 1-4: Regional rounds
-        // Each region feeds one team to Final Four
-        // Regions pair: East/West -> FF game 1, South/Midwest -> FF game 2
-        $regionPairs = [
-            [self::REGIONS[0], self::REGIONS[1]], // East, West -> FF1
-            [self::REGIONS[2], self::REGIONS[3]], // South, Midwest -> FF2
-        ];
+        // Rounds 1-4: Regional rounds. Each region feeds one team to the Final
+        // Four; which regions meet is set per year (TournamentCalendar).
+        $regionPairs = $finalFourPairs;
 
         foreach ([4, 3, 2, 1] as $round) {
             $allGames[$round] = [];
@@ -68,7 +67,8 @@ class BracketBuilderService
 
             foreach ($regions as $regionIndex => $region) {
                 // Elite 8: 1 game per region -> feeds to Final Four
-                $e8 = $this->createGame($bracket, 4, $region, 1);
+                // First region of the pair feeds team1, second feeds team2.
+                $e8 = $this->createGame($bracket, 4, $region, $regionIndex + 1);
                 $e8->setNextGame($ffGame);
                 $allGames[4][] = $e8;
 
@@ -109,15 +109,6 @@ class BracketBuilderService
                     $allGames[1][] = $r64;
                 }
             }
-        }
-
-        // Create Round entities
-        for ($r = 1; $r <= 6; $r++) {
-            $round = new Round();
-            $round->setYear($year);
-            $round->setRoundNumber($r);
-            $round->setName(Round::getRoundName($r));
-            $this->em->persist($round);
         }
 
         $this->em->flush();

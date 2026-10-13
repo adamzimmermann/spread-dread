@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Environment
 
-DDEV-based local development: PHP 8.4, MySQL 8.0, Apache.
+DDEV-based local development: PHP 8.4, MySQL 8.4 (matches production), Apache.
 
 ```bash
 ddev start                                              # Start containers

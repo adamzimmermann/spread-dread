@@ -114,7 +114,7 @@ Cron may use a different PHP than your shell; if the log shows a version error, 
 
 ## Tech Stack
 
-- **Backend:** PHP 8.4, Symfony 7, Doctrine ORM, MySQL 8.0
+- **Backend:** PHP 8.4, Symfony 7, Doctrine ORM, MySQL 8.4
 - **Frontend:** Tailwind CSS (compiled via standalone CLI), Symfony AssetMapper, vanilla JavaScript
 - **Infrastructure:** DDEV (local), Dreamhost (production)
 - **External APIs:** ESPN Scoreboard & Summary APIs
